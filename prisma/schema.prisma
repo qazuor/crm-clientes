@@ -1,0 +1,159 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+// Note: SQLite doesn't support native enums, but these provide
+// documentation and type safety at the application level
+
+model User {
+  id           String      @id @default(cuid())
+  email        String      @unique
+  name         String?
+  password     String?
+  role         String      @default("AGENT") // ADMIN, MANAGER, AGENT
+  createdAt    DateTime    @default(now())
+  updatedAt    DateTime    @updatedAt
+  accounts     Account[]
+  activities   Actividad[]
+  clientsOwned Cliente[]   @relation("AgentClientes")
+  sessions     Session[]
+
+  @@index([role])
+  @@map("users")
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@map("accounts")
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@map("sessions")
+}
+
+model Cliente {
+  id              String      @id @default(cuid())
+  nombre          String
+  email           String?
+  telefono        String?
+  direccion       String?
+  ciudad          String?
+  provincia       String?
+  codigoPostal    String?
+  industria       String?
+  // Enum fields (stored as strings in SQLite)
+  // fuente: MANUAL, WEB, REFERIDO, MARKETING, COLD_CALL, EVENTO, OTRO
+  fuente          String      @default("MANUAL")
+  // estado: NUEVO, CONTACTADO, CALIFICADO, INTERESADO, PROPUESTA_ENVIADA, NEGOCIACION, CONVERTIDO, PERDIDO, INACTIVO
+  estado          String      @default("NUEVO")
+  // prioridad: BAJA, MEDIA, ALTA, CRITICA
+  prioridad       String      @default("MEDIA")
+  scoreConversion Float?      @default(0)
+  agentId         String?
+  fechaCreacion   DateTime    @default(now())
+  fechaModific    DateTime    @updatedAt
+  ultimoContacto  DateTime?
+  notas           String?
+  esResponsive    Boolean?
+  facebook        String?
+  instagram       String?
+  linkedin        String?
+  sitioWeb        String?
+  tieneSSL        Boolean?
+  twitter         String?
+  whatsapp        String?
+  ultimaIA        DateTime?
+
+  // Enrichment fields
+  screenshotDesktop String?     // "/screenshots/cliente123_desktop.png"
+  screenshotMobile  String?     // "/screenshots/cliente123_mobile.png"
+  pageSpeedScore    String?     // JSON string: {mobile: 85, desktop: 92, performance: 78}
+  websiteMetrics    String?     // JSON string: {hasSSL: true, isResponsive: true, hasMediaQueries: true}
+  techStack         String?     // JSON string: ["React", "WordPress", "CloudFlare"]
+  socialProfiles    String?     // JSON string: {instagram: "url", facebook: "url", confidence: "high"}
+  lastEnrichment    DateTime?   // For cache and rate limiting
+  enrichmentData    String?     // JSON string: Process metadata
+
+  // Soft delete
+  deletedAt       DateTime?
+
+  // Relations
+  actividades     Actividad[]
+  agente          User?       @relation("AgentClientes", fields: [agentId], references: [id])
+
+  // Indexes for common queries
+  @@index([email])
+  @@index([telefono])
+  @@index([estado])
+  @@index([agentId])
+  @@index([industria])
+  @@index([prioridad])
+  @@index([fuente])
+  @@index([fechaCreacion])
+  @@index([nombre])
+  @@index([deletedAt])
+  // Composite indexes for common query patterns
+  @@index([estado, prioridad])
+  @@index([agentId, estado])
+  @@index([deletedAt, estado])
+  @@map("clientes")
+}
+
+model Actividad {
+  id          String    @id @default(cuid())
+  // tipo: LLAMADA, EMAIL, REUNION, TAREA, NOTA, PROPUESTA, SEGUIMIENTO,
+  //       CLIENTE_CREADO, CLIENTE_EDITADO, CLIENTE_ELIMINADO, IA_ENRIQUECIMIENTO, CONTACTO_AUTOMATICO
+  tipo        String
+  descripcion String
+  fecha       DateTime  @default(now())
+  clienteId   String
+  usuarioId   String
+  resultado   String?
+  proximoPaso String?
+  esAutomatica Boolean  @default(false) // To distinguish automatic from manual activities
+
+  // Soft delete
+  deletedAt   DateTime?
+
+  // Relations
+  usuario     User      @relation(fields: [usuarioId], references: [id])
+  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  // Indexes
+  @@index([clienteId])
+  @@index([usuarioId])
+  @@index([tipo])
+  @@index([fecha])
+  @@index([esAutomatica])
+  @@index([deletedAt])
+  // Composite indexes for common query patterns
+  @@index([clienteId, fecha])
+  @@index([usuarioId, fecha])
+  @@index([deletedAt, clienteId])
+  @@map("actividades")
+}
