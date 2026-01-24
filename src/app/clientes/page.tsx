@@ -1,0 +1,314 @@
+import { auth } from '@/lib/auth';
+import { redirect } from 'next/navigation';
+import { prisma } from '@/lib/prisma';
+import Link from 'next/link';
+import { Button } from '@/components/ui/Button';
+import LogoutButton from '@/components/LogoutButton';
+import { 
+  PlusIcon, 
+  MagnifyingGlassIcon,
+  UsersIcon,
+  BuildingOffice2Icon,
+  EyeIcon,
+  PencilIcon,
+  ChevronUpIcon,
+  ChevronDownIcon,
+  FunnelIcon,
+  CalendarIcon
+} from '@heroicons/react/24/outline';
+import { UltimaIADisplay } from '@/components/UltimaIADisplay';
+import { Pagination } from '@/components/Pagination';
+import { FiltrosAvanzados } from '@/components/FiltrosAvanzados';
+import { TablaClientes } from '@/components/TablaClientes';
+
+interface SearchParams {
+  search?: string;
+  estado?: string;
+  industria?: string;
+  fechaDesde?: string;
+  fechaHasta?: string;
+  conIA?: string;
+  conEmail?: string;
+  conTelefono?: string;
+  conSitioWeb?: string;
+  sort?: string;
+  order?: 'asc' | 'desc';
+  page?: string;
+  mostrarFiltros?: string;
+  columnas?: string;
+}
+
+export default async function ClientesPage({
+  searchParams,
+}: {
+  searchParams: Promise<SearchParams>;
+}) {
+  const session = await auth();
+
+  if (!session) {
+    redirect('/auth/login');
+  }
+
+  // Obtener searchParams de manera async
+  const params = await searchParams;
+
+  // Parámetros de búsqueda con defaults
+  const search = params.search || '';
+  const estado = params.estado || '';
+  const industria = params.industria || '';
+  const fechaDesde = params.fechaDesde || '';
+  const fechaHasta = params.fechaHasta || '';
+  const conIA = params.conIA || '';
+  const conEmail = params.conEmail || '';
+  const conTelefono = params.conTelefono || '';
+  const conSitioWeb = params.conSitioWeb || '';
+  const sortField = params.sort || 'fechaCreacion';
+  const sortOrder = params.order || 'desc';
+  const page = parseInt(params.page || '1');
+  const pageSize = 20;
+  const mostrarFiltros = params.mostrarFiltros || '';
+
+  // Construir filtros de Prisma más complejos
+  const whereClause: Record<string, unknown> = {};
+  
+  if (search) {
+    whereClause.OR = [
+      { nombre: { contains: search, mode: 'insensitive' } },
+      { email: { contains: search, mode: 'insensitive' } },
+      { telefono: { contains: search } },
+      { industria: { contains: search, mode: 'insensitive' } },
+      { direccion: { contains: search, mode: 'insensitive' } },
+      { ciudad: { contains: search, mode: 'insensitive' } },
+    ];
+  }
+  
+  if (estado) {
+    whereClause.estado = estado;
+  }
+  
+  if (industria) {
+    whereClause.industria = industria;
+  }
+  
+  if (fechaDesde || fechaHasta) {
+    whereClause.fechaCreacion = {} as { gte?: Date; lte?: Date };
+    const fechaCreacionClause = whereClause.fechaCreacion as { gte?: Date; lte?: Date };
+    if (fechaDesde) {
+      fechaCreacionClause.gte = new Date(fechaDesde);
+    }
+    if (fechaHasta) {
+      fechaCreacionClause.lte = new Date(fechaHasta + 'T23:59:59');
+    }
+  }
+  
+  if (conIA === 'si') {
+    whereClause.ultimaIA = { not: null };
+  } else if (conIA === 'no') {
+    whereClause.ultimaIA = null;
+  }
+  
+  if (conEmail === 'si') {
+    whereClause.email = { not: null };
+  } else if (conEmail === 'no') {
+    whereClause.email = null;
+  }
+  
+  if (conTelefono === 'si') {
+    whereClause.telefono = { not: null };
+  } else if (conTelefono === 'no') {
+    whereClause.telefono = null;
+  }
+  
+  if (conSitioWeb === 'si') {
+    whereClause.sitioWeb = { not: null };
+  } else if (conSitioWeb === 'no') {
+    whereClause.sitioWeb = null;
+  }
+
+  // Obtener clientes con filtros y ordenado expandido
+  const orderByClause: Record<string, unknown> = {};
+  
+  if (sortField === 'agente') {
+    orderByClause.agente = { name: sortOrder };
+  } else if (sortField === 'ultimaIA') {
+    orderByClause.ultimaIA = sortOrder;
+  } else {
+    orderByClause[sortField] = sortOrder;
+  }
+
+  // Calculate the date for "new this month" stat
+  const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
+
+  // Fetch all data in parallel for better performance
+  const [clientes, totalClientes, industriasData, totalClientesGlobal, clientesActivos, nuevosEsteMes] = await Promise.all([
+    prisma.cliente.findMany({
+      where: whereClause,
+      orderBy: orderByClause,
+      take: pageSize,
+      skip: (page - 1) * pageSize,
+      include: {
+        agente: {
+          select: {
+            name: true,
+            email: true
+          }
+        }
+      }
+    }),
+    prisma.cliente.count({ where: whereClause }),
+    prisma.cliente.findMany({
+      select: { industria: true },
+      where: { industria: { not: null } },
+      distinct: ['industria']
+    }),
+    prisma.cliente.count(),
+    prisma.cliente.count({ where: { estado: { not: 'PERDIDO' } } }),
+    prisma.cliente.count({ where: { fechaCreacion: { gte: thirtyDaysAgo } } })
+  ]);
+
+  const industriasDisponibles = industriasData
+    .map(item => item.industria)
+    .filter((industria): industria is string => Boolean(industria))
+    .sort();
+
+  const totalPages = Math.ceil(totalClientes / pageSize);
+
+  return (
+    <div className="min-h-screen bg-gray-50">
+      {/* Header */}
+      <header className="bg-white shadow-sm border-b">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex justify-between items-center h-16">
+            <div className="flex items-center space-x-4">
+              <Link href="/" className="flex items-center">
+                <BuildingOffice2Icon className="h-8 w-8 text-blue-500 mr-3" />
+                <h1 className="text-xl font-bold text-gray-900">CRM Clientes</h1>
+              </Link>
+              <nav className="hidden md:flex space-x-8">
+                <Link href="/" className="text-gray-500 hover:text-gray-900">Dashboard</Link>
+                <Link href="/clientes" className="text-blue-600 font-medium">Clientes</Link>
+                <Link href="/actividades" className="text-gray-500 hover:text-gray-900">Actividades</Link>
+              </nav>
+            </div>
+            <div className="flex items-center space-x-4">
+              <Link href="/clientes/nuevo">
+                <Button>
+                  <PlusIcon className="h-4 w-4 mr-2" />
+                  Nuevo Cliente
+                </Button>
+              </Link>
+              <LogoutButton />
+            </div>
+          </div>
+        </div>
+      </header>
+
+      {/* Main Content */}
+      <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+        <div className="mb-8">
+          <div className="flex justify-between items-center">
+            <div>
+              <h2 className="text-2xl font-bold text-gray-900">Clientes</h2>
+              <p className="mt-1 text-sm text-gray-500">
+                Gestiona tu base de datos de clientes
+              </p>
+            </div>
+          </div>
+        </div>
+
+        {/* Stats */}
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
+            <div className="flex items-center">
+              <UsersIcon className="h-8 w-8 text-blue-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Total Clientes</p>
+                <p className="text-2xl font-bold text-gray-900">{totalClientesGlobal}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
+            <div className="flex items-center">
+              <UsersIcon className="h-8 w-8 text-green-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Clientes Activos</p>
+                <p className="text-2xl font-bold text-gray-900">{clientesActivos}</p>
+              </div>
+            </div>
+          </div>
+          <div className="bg-white rounded-lg shadow-sm p-6 border">
+            <div className="flex items-center">
+              <UsersIcon className="h-8 w-8 text-yellow-500" />
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">Nuevos este mes</p>
+                <p className="text-2xl font-bold text-gray-900">{nuevosEsteMes}</p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Filtros y tabla de clientes optimizada */}
+        <div className="bg-white shadow-sm rounded-lg border">
+          {/* Formulario de filtros colapsables */}
+          <FiltrosAvanzados
+            search={search}
+            estado={estado}
+            industria={industria}
+            fechaDesde={fechaDesde}
+            fechaHasta={fechaHasta}
+            conIA={conIA}
+            conEmail={conEmail}
+            conTelefono={conTelefono}
+            conSitioWeb={conSitioWeb}
+            sortField={sortField}
+            sortOrder={sortOrder}
+            industriasDisponibles={industriasDisponibles}
+            mostrarFiltros={mostrarFiltros}
+            columnas={params.columnas}
+          />
+
+          {/* Tabla de clientes con columnas seleccionables */}
+          <div className="p-6">
+            <TablaClientes
+              clientes={clientes}
+              params={params as Record<string, string>}
+              sortField={sortField}
+              sortOrder={sortOrder}
+              columnasIniciales={params.columnas}
+            />
+          </div>
+          
+          {/* Paginación */}
+          {totalPages > 1 && (
+            <Pagination
+              currentPage={page}
+              totalPages={totalPages}
+              baseUrl="/clientes"
+              searchParams={params as Record<string, string>}
+            />
+          )}
+          
+          {clientes.length === 0 && (
+            <div className="text-center py-12">
+              <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
+              <h3 className="mt-2 text-sm font-medium text-gray-900">No hay clientes</h3>
+              <p className="mt-1 text-sm text-gray-500">
+                {search || estado || industria || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb ? 
+                  'No se encontraron clientes con los filtros aplicados.' :
+                  'Comienza agregando tu primer cliente.'
+                }
+              </p>
+              {(search || estado || industria || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb) && (
+                <div className="mt-6">
+                  <Link href="/clientes">
+                    <Button variant="outline">Limpiar filtros</Button>
+                  </Link>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      </main>
+    </div>
+  );
+}
