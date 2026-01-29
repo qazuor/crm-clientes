@@ -1,17 +1,8 @@
 import { prisma } from '@/lib/prisma';
-
-export type TipoActividadAutomatica = 
-  | 'CLIENTE_CREADO'
-  | 'CLIENTE_EDITADO' 
-  | 'CLIENTE_ELIMINADO'
-  | 'IA_ENRIQUECIMIENTO'
-  | 'CONTACTO_AUTOMATICO'
-  | 'CAMBIO_ESTADO'
-  | 'CAMBIO_PRIORIDAD'
-  | 'CAMBIO_AGENTE';
+import { TipoActividad } from '@prisma/client';
 
 interface RegistrarActividadParams {
-  tipo: TipoActividadAutomatica;
+  tipo: TipoActividad;
   clienteId: string;
   usuarioId: string;
   descripcion: string;
@@ -49,7 +40,7 @@ export async function registrarActividadAutomatica({
 // Funciones helper específicas para cada tipo de actividad
 export async function registrarClienteCreado(clienteId: string, usuarioId: string, nombreCliente: string) {
   return registrarActividadAutomatica({
-    tipo: 'CLIENTE_CREADO',
+    tipo: TipoActividad.CLIENTE_CREADO,
     clienteId,
     usuarioId,
     descripcion: `Cliente "${nombreCliente}" fue creado en el sistema`,
@@ -59,14 +50,14 @@ export async function registrarClienteCreado(clienteId: string, usuarioId: strin
 }
 
 export async function registrarClienteEditado(
-  clienteId: string, 
-  usuarioId: string, 
-  nombreCliente: string, 
+  clienteId: string,
+  usuarioId: string,
+  nombreCliente: string,
   camposEditados: string[]
 ) {
   const campos = camposEditados.join(', ');
   return registrarActividadAutomatica({
-    tipo: 'CLIENTE_EDITADO',
+    tipo: TipoActividad.CLIENTE_EDITADO,
     clienteId,
     usuarioId,
     descripcion: `Información del cliente "${nombreCliente}" fue actualizada`,
@@ -77,7 +68,7 @@ export async function registrarClienteEditado(
 
 export async function registrarClienteEliminado(clienteId: string, usuarioId: string, nombreCliente: string) {
   return registrarActividadAutomatica({
-    tipo: 'CLIENTE_ELIMINADO',
+    tipo: TipoActividad.CLIENTE_ELIMINADO,
     clienteId,
     usuarioId,
     descripcion: `Cliente "${nombreCliente}" fue eliminado del sistema`,
@@ -86,15 +77,15 @@ export async function registrarClienteEliminado(clienteId: string, usuarioId: st
 }
 
 export async function registrarEnriquecimientoIA(
-  clienteId: string, 
-  usuarioId: string, 
+  clienteId: string,
+  usuarioId: string,
   nombreCliente: string,
   tipoEnriquecimiento: string,
   datosObtenidos: string[]
 ) {
   const datos = datosObtenidos.join(', ');
   return registrarActividadAutomatica({
-    tipo: 'IA_ENRIQUECIMIENTO',
+    tipo: TipoActividad.IA_ENRIQUECIMIENTO,
     clienteId,
     usuarioId,
     descripcion: `Se enriqueció la información del cliente "${nombreCliente}" usando IA (${tipoEnriquecimiento})`,
@@ -111,7 +102,7 @@ export async function registrarContactoAutomatico(
   resultado: string
 ) {
   return registrarActividadAutomatica({
-    tipo: 'CONTACTO_AUTOMATICO',
+    tipo: TipoActividad.CONTACTO_AUTOMATICO,
     clienteId,
     usuarioId,
     descripcion: `Contacto automático realizado con cliente "${nombreCliente}" via ${tipoContacto}`,
@@ -120,6 +111,8 @@ export async function registrarContactoAutomatico(
   });
 }
 
+// Note: CAMBIO_ESTADO, CAMBIO_PRIORIDAD, CAMBIO_AGENTE are recorded as NOTA type
+// since they are informational notes about changes
 export async function registrarCambioEstado(
   clienteId: string,
   usuarioId: string,
@@ -128,7 +121,7 @@ export async function registrarCambioEstado(
   estadoNuevo: string
 ) {
   return registrarActividadAutomatica({
-    tipo: 'CAMBIO_ESTADO',
+    tipo: TipoActividad.NOTA,
     clienteId,
     usuarioId,
     descripcion: `Estado del cliente "${nombreCliente}" cambió de "${estadoAnterior}" a "${estadoNuevo}"`,
@@ -144,7 +137,7 @@ export async function registrarCambioPrioridad(
   prioridadNueva: string
 ) {
   return registrarActividadAutomatica({
-    tipo: 'CAMBIO_PRIORIDAD',
+    tipo: TipoActividad.NOTA,
     clienteId,
     usuarioId,
     descripcion: `Prioridad del cliente "${nombreCliente}" cambió de "${prioridadAnterior}" a "${prioridadNueva}"`,
@@ -161,9 +154,9 @@ export async function registrarCambioAgente(
 ) {
   const desde = agenteAnterior || 'Sin asignar';
   const hacia = agenteNuevo || 'Sin asignar';
-  
+
   return registrarActividadAutomatica({
-    tipo: 'CAMBIO_AGENTE',
+    tipo: TipoActividad.NOTA,
     clienteId,
     usuarioId,
     descripcion: `Agente asignado al cliente "${nombreCliente}" cambió de "${desde}" a "${hacia}"`,

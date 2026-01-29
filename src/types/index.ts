@@ -130,7 +130,7 @@ export interface UpdateActividadDTO extends Partial<CreateActividadDTO> {
 }
 
 // Tipos de respuesta de API
-export interface ApiResponse<T = any> {
+export interface ApiResponse<T = unknown> {
   success: boolean
   data?: T
   message?: string
