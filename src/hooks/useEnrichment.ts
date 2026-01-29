@@ -4,12 +4,12 @@ import { useState, useCallback } from 'react';
 
 export interface EnrichmentStatus {
   isLoading: boolean;
-  lastResult: any;
+  lastResult: unknown;
   error: string | null;
 }
 
 export interface UseEnrichmentOptions {
-  onSuccess?: (result: any) => void;
+  onSuccess?: (result: unknown) => void;
   onError?: (error: string) => void;
 }
 
