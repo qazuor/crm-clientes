@@ -1,4 +1,5 @@
-import { PrismaClient } from '@prisma/client';
+/* eslint-disable @typescript-eslint/no-explicit-any */
+import { PrismaClient, FuenteCliente, EstadoCliente, PrioridadCliente } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 import fs from 'fs';
 import path from 'path';
@@ -36,18 +37,18 @@ function extractWebsite(cliente: any): string | null {
 }
 
 // Función para determinar fuente
-function determineFuente(): 'WEB' | 'TELEFONO' | 'EMAIL' | 'REFERIDO' | 'MARKETING' | 'EVENTO' | 'COLD_CALL' | 'OTRO' {
-  return 'MARKETING'; // La mayoría vienen de marketing/investigación
+function determineFuente(): FuenteCliente {
+  return FuenteCliente.MARKETING; // La mayoría vienen de marketing/investigación
 }
 
 // Función para determinar estado inicial
-function determineEstado(): 'NUEVO' | 'CONTACTADO' | 'CALIFICADO' | 'PROPUESTA_ENVIADA' | 'NEGOCIACION' | 'CERRADO_GANADO' | 'CERRADO_PERDIDO' | 'PERDIDO' {
-  return 'NUEVO';
+function determineEstado(): EstadoCliente {
+  return EstadoCliente.NUEVO;
 }
 
 // Función para determinar prioridad
-function determinePrioridad(): 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA' {
-  return 'MEDIA';
+function determinePrioridad(): PrioridadCliente {
+  return PrioridadCliente.MEDIA;
 }
 
 async function loadJsonData() {

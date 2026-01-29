@@ -3,25 +3,75 @@ generator client {
 }
 
 datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
-// Note: SQLite doesn't support native enums, but these provide
-// documentation and type safety at the application level
+// Enums for PostgreSQL
+enum UserRole {
+  ADMIN
+  MANAGER
+  AGENT
+}
+
+enum EstadoCliente {
+  NUEVO
+  CONTACTADO
+  CALIFICADO
+  INTERESADO
+  PROPUESTA_ENVIADA
+  NEGOCIACION
+  CONVERTIDO
+  PERDIDO
+  INACTIVO
+}
+
+enum PrioridadCliente {
+  BAJA
+  MEDIA
+  ALTA
+  CRITICA
+}
+
+enum FuenteCliente {
+  MANUAL
+  WEB
+  REFERIDO
+  MARKETING
+  COLD_CALL
+  EVENTO
+  OTRO
+}
+
+enum TipoActividad {
+  LLAMADA
+  EMAIL
+  REUNION
+  TAREA
+  NOTA
+  PROPUESTA
+  SEGUIMIENTO
+  CLIENTE_CREADO
+  CLIENTE_EDITADO
+  CLIENTE_ELIMINADO
+  IA_ENRIQUECIMIENTO
+  CONTACTO_AUTOMATICO
+}
 
 model User {
-  id           String      @id @default(cuid())
-  email        String      @unique
-  name         String?
-  password     String?
-  role         String      @default("AGENT") // ADMIN, MANAGER, AGENT
-  createdAt    DateTime    @default(now())
-  updatedAt    DateTime    @updatedAt
-  accounts     Account[]
-  activities   Actividad[]
-  clientsOwned Cliente[]   @relation("AgentClientes")
-  sessions     Session[]
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  password      String?
+  role          UserRole       @default(AGENT)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  activities    Actividad[]
+  clientsOwned  Cliente[]      @relation("AgentClientes")
+  sessions      Session[]
+  notifications Notification[]
 
   @@index([role])
   @@map("users")
@@ -33,12 +83,12 @@ model Account {
   type              String
   provider          String
   providerAccountId String
-  refresh_token     String?
-  access_token      String?
+  refresh_token     String? @db.Text
+  access_token      String? @db.Text
   expires_at        Int?
   token_type        String?
   scope             String?
-  id_token          String?
+  id_token          String? @db.Text
   session_state     String?
   user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
 
@@ -57,7 +107,7 @@ model Session {
 }
 
 model Cliente {
-  id              String      @id @default(cuid())
+  id              String           @id @default(cuid())
   nombre          String
   email           String?
   telefono        String?
@@ -66,19 +116,15 @@ model Cliente {
   provincia       String?
   codigoPostal    String?
   industria       String?
-  // Enum fields (stored as strings in SQLite)
-  // fuente: MANUAL, WEB, REFERIDO, MARKETING, COLD_CALL, EVENTO, OTRO
-  fuente          String      @default("MANUAL")
-  // estado: NUEVO, CONTACTADO, CALIFICADO, INTERESADO, PROPUESTA_ENVIADA, NEGOCIACION, CONVERTIDO, PERDIDO, INACTIVO
-  estado          String      @default("NUEVO")
-  // prioridad: BAJA, MEDIA, ALTA, CRITICA
-  prioridad       String      @default("MEDIA")
-  scoreConversion Float?      @default(0)
+  fuente          FuenteCliente    @default(MANUAL)
+  estado          EstadoCliente    @default(NUEVO)
+  prioridad       PrioridadCliente @default(MEDIA)
+  scoreConversion Float?           @default(0)
   agentId         String?
-  fechaCreacion   DateTime    @default(now())
-  fechaModific    DateTime    @updatedAt
+  fechaCreacion   DateTime         @default(now())
+  fechaModific    DateTime         @updatedAt
   ultimoContacto  DateTime?
-  notas           String?
+  notas           String?          @db.Text
   esResponsive    Boolean?
   facebook        String?
   instagram       String?
@@ -90,23 +136,24 @@ model Cliente {
   ultimaIA        DateTime?
 
   // Enrichment fields
-  screenshotDesktop String?     // "/screenshots/cliente123_desktop.png"
-  screenshotMobile  String?     // "/screenshots/cliente123_mobile.png"
-  pageSpeedScore    String?     // JSON string: {mobile: 85, desktop: 92, performance: 78}
-  websiteMetrics    String?     // JSON string: {hasSSL: true, isResponsive: true, hasMediaQueries: true}
-  techStack         String?     // JSON string: ["React", "WordPress", "CloudFlare"]
-  socialProfiles    String?     // JSON string: {instagram: "url", facebook: "url", confidence: "high"}
-  lastEnrichment    DateTime?   // For cache and rate limiting
-  enrichmentData    String?     // JSON string: Process metadata
+  screenshotDesktop String?   // URL to blob storage
+  screenshotMobile  String?   // URL to blob storage
+  pageSpeedScore    String?   // JSON string
+  websiteMetrics    String?   @db.Text // JSON string
+  techStack         String?   @db.Text // JSON string
+  socialProfiles    String?   @db.Text // JSON string
+  lastEnrichment    DateTime?
+  enrichmentData    String?   @db.Text // JSON string
 
   // Soft delete
-  deletedAt       DateTime?
+  deletedAt DateTime?
 
   // Relations
   actividades     Actividad[]
-  agente          User?       @relation("AgentClientes", fields: [agentId], references: [id])
+  agente          User?              @relation("AgentClientes", fields: [agentId], references: [id])
+  enrichment      ClienteEnrichment?
+  websiteAnalysis WebsiteAnalysis?
 
-  // Indexes for common queries
   @@index([email])
   @@index([telefono])
   @@index([estado])
@@ -117,7 +164,6 @@ model Cliente {
   @@index([fechaCreacion])
   @@index([nombre])
   @@index([deletedAt])
-  // Composite indexes for common query patterns
   @@index([estado, prioridad])
   @@index([agentId, estado])
   @@index([deletedAt, estado])
@@ -125,35 +171,277 @@ model Cliente {
 }
 
 model Actividad {
-  id          String    @id @default(cuid())
-  // tipo: LLAMADA, EMAIL, REUNION, TAREA, NOTA, PROPUESTA, SEGUIMIENTO,
-  //       CLIENTE_CREADO, CLIENTE_EDITADO, CLIENTE_ELIMINADO, IA_ENRIQUECIMIENTO, CONTACTO_AUTOMATICO
-  tipo        String
-  descripcion String
-  fecha       DateTime  @default(now())
-  clienteId   String
-  usuarioId   String
-  resultado   String?
-  proximoPaso String?
-  esAutomatica Boolean  @default(false) // To distinguish automatic from manual activities
+  id           String        @id @default(cuid())
+  tipo         TipoActividad
+  descripcion  String        @db.Text
+  fecha        DateTime      @default(now())
+  clienteId    String
+  usuarioId    String
+  resultado    String?       @db.Text
+  proximoPaso  String?
+  esAutomatica Boolean       @default(false)
 
   // Soft delete
-  deletedAt   DateTime?
+  deletedAt DateTime?
 
   // Relations
-  usuario     User      @relation(fields: [usuarioId], references: [id])
-  cliente     Cliente   @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  usuario User    @relation(fields: [usuarioId], references: [id])
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
-  // Indexes
   @@index([clienteId])
   @@index([usuarioId])
   @@index([tipo])
   @@index([fecha])
   @@index([esAutomatica])
   @@index([deletedAt])
-  // Composite indexes for common query patterns
   @@index([clienteId, fecha])
   @@index([usuarioId, fecha])
   @@index([deletedAt, clienteId])
   @@map("actividades")
+}
+
+// Quota tracking for API rate limiting
+model Quota {
+  id           String    @id @default(cuid())
+  service      String    @unique // screenshots, pagespeed, serpapi, builtwith
+  used         Int       @default(0)
+  limit        Int
+  lastReset    DateTime  @default(now())
+  updatedAt    DateTime  @updatedAt
+  successCount Int       @default(0)
+  errorCount   Int       @default(0)
+  lastError    String?
+  lastErrorAt  DateTime?
+  // Alert settings
+  alertThreshold Int     @default(80) // Percentage to trigger alert
+  alertSent      Boolean @default(false)
+
+  history QuotaHistory[]
+
+  @@index([service])
+  @@index([lastReset])
+  @@map("quotas")
+}
+
+// Quota historical tracking
+model QuotaHistory {
+  id        String   @id @default(cuid())
+  quotaId   String
+  date      DateTime @db.Date
+  used      Int
+  success   Int      @default(0)
+  errors    Int      @default(0)
+  createdAt DateTime @default(now())
+
+  quota Quota @relation(fields: [quotaId], references: [id], onDelete: Cascade)
+
+  @@unique([quotaId, date])
+  @@index([quotaId])
+  @@index([date])
+  @@map("quota_history")
+}
+
+// API Keys encriptadas
+model ApiKey {
+  id         String    @id @default(cuid())
+  provider   String    @unique // openai, gemini, grok, deepseek, google_places, etc.
+  apiKey     String    @db.Text // Encriptado AES-256
+  model      String? // gpt-4o, gemini-1.5-flash, etc.
+  enabled    Boolean   @default(true)
+  lastUsedAt DateTime?
+  createdAt  DateTime  @default(now())
+  updatedAt  DateTime  @updatedAt
+
+  @@index([provider])
+  @@index([enabled])
+  @@map("api_keys")
+}
+
+// Settings de Enriquecimiento (singleton)
+model EnrichmentSettings {
+  id String @id @default("default")
+
+  // Parametros IA
+  temperature         Float   @default(0.3)
+  topP                Float   @default(0.9)
+  matchMode           String  @default("fuzzy") // exact, fuzzy, broad
+  minConfidenceScore  Float   @default(0.7)
+  requireVerification Boolean @default(true)
+  maxResultsPerField  Int     @default(3)
+
+  // Toggles analisis website
+  enableScreenshots     Boolean @default(true)
+  enablePageSpeed       Boolean @default(true)
+  enableSsl             Boolean @default(true)
+  enableTechStack       Boolean @default(true)
+  enableSeo             Boolean @default(true)
+  enableAccessibility   Boolean @default(true)
+  enableSecurity        Boolean @default(true)
+  enableCrawlability    Boolean @default(true)
+
+  updatedAt DateTime @updatedAt
+
+  @@map("enrichment_settings")
+}
+
+// Enriquecimiento IA del Cliente (1:1)
+model ClienteEnrichment {
+  id        String @id @default(cuid())
+  clienteId String @unique
+
+  // Datos encontrados
+  website          String?
+  websiteScore     Float?
+  emails           String? @db.Text // JSON
+  phones           String? @db.Text // JSON
+  address          String?
+  addressScore     Float?
+  description      String? @db.Text
+  descriptionScore Float?
+  industry         String?
+  industryScore    Float?
+  companySize      String?
+  companySizeScore Float?
+  socialProfiles   String? @db.Text // JSON
+
+  // Metadata
+  aiProvidersUsed String?   @db.Text // JSON
+  enrichedAt      DateTime?
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@map("cliente_enrichments")
+}
+
+// Analisis de Website (1:1)
+model WebsiteAnalysis {
+  id        String @id @default(cuid())
+  clienteId String @unique
+  url       String
+
+  // SSL
+  sslValid     Boolean?
+  sslIssuer    String?
+  sslExpiresAt DateTime?
+  sslProtocol  String?
+
+  // Performance
+  performanceScore Int?
+  fcpMs            Int?
+  lcpMs            Int?
+  ttiMs            Int?
+  cls              Float?
+  mobileScore      Int?
+  desktopScore     Int?
+
+  // Responsive
+  hasViewportMeta       Boolean?
+  breakpoints           String? @db.Text // JSON
+  mediaQueriesCount     Int?
+  isResponsive          Boolean?
+  responsiveConfidence  String?  // high, medium, low
+
+  // Tech Stack
+  techStack String? @db.Text // JSON
+
+  // SEO
+  seoTitle        String?
+  seoDescription  String? @db.Text
+  seoH1Count      Int?
+  seoHasCanonical Boolean?
+  seoIndexable    Boolean?
+
+  // Structured Data
+  hasJsonLd       Boolean?
+  jsonLdTypes     String? // JSON
+  hasOpenGraph    Boolean?
+  openGraphData   String? @db.Text // JSON
+  hasTwitterCards Boolean?
+
+  // Accessibility
+  accessibilityScore  Int?
+  accessibilityIssues String? @db.Text // JSON
+
+  // Security
+  hasHttps       Boolean?
+  hstsEnabled    Boolean?
+  xFrameOptions  String?
+  hasCsp         Boolean?
+  isSafeBrowsing Boolean?
+
+  // Crawlability
+  hasRobotsTxt      Boolean?
+  robotsAllowsIndex Boolean?
+  hasSitemap        Boolean?
+  sitemapUrl        String?
+  sitemapUrlCount   Int?
+
+  // Server (IP-API)
+  serverLocation String?
+  serverIp       String?
+  serverIsp      String?
+  serverCountry  String?
+  serverCity     String?
+  isHosting      Boolean?
+
+  // Domain (WhoisXML)
+  domainRegistrar  String?
+  domainCreatedAt  DateTime?
+  domainExpiresAt  DateTime?
+  domainAgeYears   Int?
+  daysUntilExpiry  Int?
+  whoisOwner       String?
+  whoisCountry     String?
+
+  // Favicon
+  faviconUrl String?
+
+  // Screenshots
+  screenshotDesktop String?
+  screenshotMobile  String?
+
+  // Metadata
+  apisUsed   String?   @db.Text // JSON
+  analyzedAt DateTime?
+
+  cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+
+  @@index([clienteId])
+  @@map("website_analyses")
+}
+
+// Blob storage tracking for screenshots
+model BlobFile {
+  id         String   @id @default(cuid())
+  url        String   @unique
+  pathname   String
+  clienteId  String?
+  type       String   // desktop_screenshot, mobile_screenshot, other
+  size       Int?
+  createdAt  DateTime @default(now())
+
+  @@index([clienteId])
+  @@index([type])
+  @@map("blob_files")
+}
+
+// In-app notifications
+model Notification {
+  id        String   @id @default(cuid())
+  userId    String
+  type      String   // enrichment_complete, enrichment_failed, bulk_enrichment_complete, etc.
+  title     String
+  message   String   @db.Text
+  link      String?
+  metadata  String?  @db.Text // JSON
+  read      Boolean  @default(false)
+  createdAt DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+  @@map("notifications")
 }
