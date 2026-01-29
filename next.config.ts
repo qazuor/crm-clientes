@@ -38,7 +38,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com",
+      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com https://*.blob.vercel-storage.com",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'"
@@ -71,7 +71,21 @@ const nextConfig: NextConfig = {
         protocol: 'https',
         hostname: 'shot.screenshotapi.net',
       },
+      {
+        protocol: 'https',
+        hostname: '*.public.blob.vercel-storage.com',
+      },
+      {
+        protocol: 'https',
+        hostname: '*.blob.vercel-storage.com',
+      },
     ],
+  },
+
+  // Vercel-specific optimizations
+  experimental: {
+    // Optimize for serverless
+    serverMinification: true,
   },
 };
 

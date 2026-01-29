@@ -54,6 +54,9 @@ quotas.json
 /public/screenshots/*.png
 !/public/screenshots/.gitkeep
 
+# Logs
+/logs/
+
 # Planning artifacts
 .plan/
 /etc/

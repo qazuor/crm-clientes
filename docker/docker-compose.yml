@@ -1,0 +1,31 @@
+services:
+    postgres:
+        image: pgvector/pgvector:pg16
+        container_name: ${COMPOSE_PROJECT_NAME:-crm-clientes}-postgres
+        restart: unless-stopped
+        environment:
+            POSTGRES_USER: ${POSTGRES_USER:-crm_clientes}
+            POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-crm_clientes_dev_password}
+            POSTGRES_DB: ${POSTGRES_DB:-crm_clientes}
+        ports:
+            - '${POSTGRES_PORT:-5436}:5432'
+        volumes:
+            - postgres_data:/var/lib/postgresql/data
+            - ./init.sql:/docker-entrypoint-initdb.d/init.sql:ro
+        healthcheck:
+            test: ['CMD-SHELL', 'pg_isready -U ${POSTGRES_USER:-crm_clientes} -d ${POSTGRES_DB:-crm_clientes}']
+            interval: 10s
+            timeout: 5s
+            retries: 5
+            start_period: 10s
+        networks:
+            - crm-network
+
+volumes:
+    postgres_data:
+        name: ${COMPOSE_PROJECT_NAME:-crm-clientes}-postgres-data
+
+networks:
+    crm-network:
+        name: ${COMPOSE_PROJECT_NAME:-crm-clientes}-network
+        driver: bridge
