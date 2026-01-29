@@ -15,6 +15,7 @@ interface FiltrosAvanzadosProps {
   search: string;
   estado: string;
   industria: string;
+  ciudad: string;
   fechaDesde: string;
   fechaHasta: string;
   conIA: string;
@@ -24,6 +25,7 @@ interface FiltrosAvanzadosProps {
   sortField: string;
   sortOrder: string;
   industriasDisponibles: string[];
+  ciudadesDisponibles: string[];
   mostrarFiltros?: string;
   columnas?: string;
 }
@@ -32,6 +34,7 @@ export function FiltrosAvanzados({
   search,
   estado,
   industria,
+  ciudad,
   fechaDesde,
   fechaHasta,
   conIA,
@@ -41,12 +44,13 @@ export function FiltrosAvanzados({
   sortField,
   sortOrder,
   industriasDisponibles,
+  ciudadesDisponibles,
   mostrarFiltros,
   columnas
 }: FiltrosAvanzadosProps) {
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(mostrarFiltros === 'true');
-  
-  const hayFiltrosActivos = search || estado || industria || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb;
+
+  const hayFiltrosActivos = search || estado || industria || ciudad || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb;
 
   const selectClassName = `w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-gray-900 appearance-none`;
   
@@ -157,6 +161,25 @@ export function FiltrosAvanzados({
                   <option value="">Todas</option>
                   {industriasDisponibles.map(ind => (
                     <option key={ind} value={ind}>{ind}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Ciudad */}
+              <div>
+                <label htmlFor="ciudad" className="block text-xs font-semibold text-gray-700 mb-1">
+                  Ciudad
+                </label>
+                <select
+                  id="ciudad"
+                  name="ciudad"
+                  defaultValue={ciudad}
+                  className={selectClassName}
+                  style={selectStyle}
+                >
+                  <option value="">Todas</option>
+                  {ciudadesDisponibles.map(c => (
+                    <option key={c} value={c}>{c}</option>
                   ))}
                 </select>
               </div>

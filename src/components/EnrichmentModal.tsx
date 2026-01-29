@@ -153,6 +153,7 @@ export function EnrichmentModal({ isOpen, onClose, cliente, onSuccess }: Enrichm
       { field: 'tieneSSL', label: 'Tiene SSL', current: cliente.tieneSSL, found: data.tieneSSL },
       { field: 'esResponsive', label: 'Es Responsive', current: cliente.esResponsive, found: data.esResponsive },
       { field: 'direccion', label: 'Dirección', current: cliente.direccion, found: data.direccionCompleta },
+      { field: 'notas', label: 'Notas (Info Extra)', current: cliente.notas, found: data.notas },
     ];
 
     const validComparisons = fieldMappings
@@ -196,7 +197,15 @@ export function EnrichmentModal({ isOpen, onClose, cliente, onSuccess }: Enrichm
 
       comparisons.forEach(comp => {
         if (comp.accept) {
-          acceptedChanges[comp.field === 'direccion' ? 'direccion' : comp.field] = comp.found;
+          // Special handling for notas - append to existing instead of replacing
+          if (comp.field === 'notas' && comp.found) {
+            const existingNotas = cliente.notas || '';
+            const newNotas = String(comp.found);
+            const separator = existingNotas ? '\n\n--- Info IA ---\n' : '';
+            acceptedChanges.notas = existingNotas + separator + newNotas;
+          } else {
+            acceptedChanges[comp.field === 'direccion' ? 'direccion' : comp.field] = comp.found;
+          }
         }
       });
 
@@ -398,8 +407,8 @@ export function EnrichmentModal({ isOpen, onClose, cliente, onSuccess }: Enrichm
                         Datos encontrados
                       </h3>
                       <p className="text-sm text-gray-500">
-                        Confidence: {enrichmentData.confidence ? `${Math.round(enrichmentData.confidence * 100)}%` : 'N/A'} • 
-                        Fuentes: {enrichmentData.fuentes?.join(', ') || 'Múltiples'}
+                        Confidence: {enrichmentData.confidence ? `${Math.round(enrichmentData.confidence * 100)}%` : 'N/A'} •
+                        Fuentes: {Array.isArray(enrichmentData.fuentes) ? enrichmentData.fuentes.join(', ') : (enrichmentData.fuentes || 'Múltiples')}
                       </p>
                     </div>
                     <div className="flex space-x-2">
@@ -526,16 +535,6 @@ export function EnrichmentModal({ isOpen, onClose, cliente, onSuccess }: Enrichm
                   ))}
                 </div>
 
-                {enrichmentData.notas && (
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4">
-                    <h4 className="text-sm font-medium text-blue-900 mb-2">
-                      Notas adicionales:
-                    </h4>
-                    <p className="text-sm text-blue-800">
-                      {enrichmentData.notas}
-                    </p>
-                  </div>
-                )}
               </div>
             )}
 

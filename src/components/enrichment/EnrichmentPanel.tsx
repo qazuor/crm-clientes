@@ -13,9 +13,17 @@ interface Cliente {
   lastEnrichment?: Date;
 }
 
+interface ServiceResult {
+  success: boolean;
+  [key: string]: unknown;
+}
+
 interface EnrichmentResult {
   success: boolean;
-  data?: any;
+  data?: {
+    services?: Record<string, ServiceResult>;
+    [key: string]: unknown;
+  };
   error?: string;
 }
 
@@ -319,7 +327,7 @@ export function EnrichmentPanel({ cliente, onEnrichmentComplete }: EnrichmentPan
               
               {lastResult.data?.services && (
                 <div className="space-y-2 text-sm">
-                  {Object.entries(lastResult.data.services).map(([service, result]: [string, any]) => (
+                  {Object.entries(lastResult.data.services).map(([service, result]) => (
                     <div key={service} className="flex items-center justify-between">
                       <span className="text-gray-700 capitalize">
                         {service === 'screenshots' ? '📸 Screenshots' : '⚡ PageSpeed'}:

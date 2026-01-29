@@ -1,22 +1,31 @@
 import Link from 'next/link';
 import LogoutButton from '@/components/LogoutButton';
-import { 
+import { NotificationBell } from '@/components/NotificationBell';
+import {
   BuildingOffice2Icon,
-  PlusIcon
+  PlusIcon,
+  Cog6ToothIcon
 } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 
 interface AuthenticatedLayoutProps {
   children: React.ReactNode;
   currentPath?: string;
+  userRole?: string;
 }
 
-export default function AuthenticatedLayout({ children, currentPath = '/' }: AuthenticatedLayoutProps) {
+export default function AuthenticatedLayout({
+  children,
+  currentPath = '/',
+  userRole
+}: AuthenticatedLayoutProps) {
   const isActive = (path: string) => {
     if (path === '/' && currentPath === '/') return true;
     if (path !== '/' && currentPath.startsWith(path)) return true;
     return false;
   };
+
+  const isAdmin = userRole === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -30,36 +39,49 @@ export default function AuthenticatedLayout({ children, currentPath = '/' }: Aut
                 <h1 className="text-xl font-bold text-gray-900">CRM Clientes</h1>
               </Link>
               <nav className="hidden md:flex space-x-8">
-                <Link 
-                  href="/" 
+                <Link
+                  href="/"
                   className={`${
-                    isActive('/') 
-                      ? 'text-blue-600 font-medium' 
+                    isActive('/')
+                      ? 'text-blue-600 font-medium'
                       : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   Dashboard
                 </Link>
-                <Link 
-                  href="/clientes" 
+                <Link
+                  href="/clientes"
                   className={`${
-                    isActive('/clientes') 
-                      ? 'text-blue-600 font-medium' 
+                    isActive('/clientes')
+                      ? 'text-blue-600 font-medium'
                       : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   Clientes
                 </Link>
-                <Link 
-                  href="/actividades" 
+                <Link
+                  href="/actividades"
                   className={`${
-                    isActive('/actividades') 
-                      ? 'text-blue-600 font-medium' 
+                    isActive('/actividades')
+                      ? 'text-blue-600 font-medium'
                       : 'text-gray-500 hover:text-gray-900'
                   }`}
                 >
                   Actividades
                 </Link>
+                {isAdmin && (
+                  <Link
+                    href="/admin/settings"
+                    className={`flex items-center gap-1 ${
+                      isActive('/admin/settings')
+                        ? 'text-blue-600 font-medium'
+                        : 'text-gray-500 hover:text-gray-900'
+                    }`}
+                  >
+                    <Cog6ToothIcon className="h-4 w-4" />
+                    Settings
+                  </Link>
+                )}
               </nav>
             </div>
             <div className="flex items-center space-x-4">
@@ -69,13 +91,14 @@ export default function AuthenticatedLayout({ children, currentPath = '/' }: Aut
                   Nuevo Cliente
                 </Button>
               </Link>
+              <NotificationBell />
               <LogoutButton />
             </div>
           </div>
         </div>
       </header>
 
-      {/* Contenido de la página */}
+      {/* Contenido de la pagina */}
       <main>
         {children}
       </main>

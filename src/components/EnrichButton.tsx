@@ -39,8 +39,8 @@ interface EnrichButtonProps {
 
 interface EnrichmentResult {
   success: boolean;
-  data?: any;
-  enrichedData?: any;
+  data?: unknown;
+  enrichedData?: unknown;
   message?: string;
   error?: string;
 }
@@ -56,13 +56,6 @@ export function EnrichButton({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [clienteData, setClienteData] = useState(cliente);
 
-  // Si no tenemos los datos del cliente, los obtenemos
-  useEffect(() => {
-    if (!cliente) {
-      fetchClienteData();
-    }
-  }, [clienteId, cliente]);
-
   const fetchClienteData = async () => {
     try {
       const response = await fetch(`/api/clientes/${clienteId}`);
@@ -74,6 +67,14 @@ export function EnrichButton({
       console.error('Error fetching cliente:', error);
     }
   };
+
+  // Si no tenemos los datos del cliente, los obtenemos
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  useEffect(() => {
+    if (!cliente) {
+      fetchClienteData();
+    }
+  }, [clienteId, cliente]);
 
   const handleSuccess = () => {
     setIsModalOpen(false);
