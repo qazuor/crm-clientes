@@ -41,3 +41,29 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# Database files
+*.db
+*.db-journal
+dev.db
+
+# Old quota tracking file
+quotas.json
+
+# Screenshots (local development)
+/public/screenshots/*.png
+!/public/screenshots/.gitkeep
+
+# Planning artifacts
+.plan/
+/etc/
+/docs/
+
+# One-off utility scripts
+add-admin.js
+create-admin.js
+generate-sql.js
+test-auth.js
+test-enrichment.sh
+*.sql
+ENRICHMENT_PLAN.md
