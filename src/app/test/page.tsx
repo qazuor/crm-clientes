@@ -23,7 +23,7 @@ export default function TestPage() {
             placeholder="Escribe algo aquí..."
           />
           <p className="mt-2 text-sm text-gray-600">
-            Valor actual: "{testInput}"
+            Valor actual: &quot;{testInput}&quot;
           </p>
         </div>
 

@@ -37,7 +37,7 @@ export default async function ActividadesPage({ searchParams }: ActividadesPageP
   const skip = (page - 1) * 10;
 
   // Construir filtros
-  const where: any = {};
+  const where: Record<string, unknown> = {};
   
   if (search) {
     where.OR = [
@@ -153,7 +153,7 @@ export default async function ActividadesPage({ searchParams }: ActividadesPageP
   };
 
   return (
-    <AuthenticatedLayout currentPath="/actividades">
+    <AuthenticatedLayout currentPath="/actividades" userRole={session.user?.role}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Header */}
         <div className="mb-8">

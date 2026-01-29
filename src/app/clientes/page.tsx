@@ -3,20 +3,10 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import LogoutButton from '@/components/LogoutButton';
-import { 
-  PlusIcon, 
-  MagnifyingGlassIcon,
+import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import {
   UsersIcon,
-  BuildingOffice2Icon,
-  EyeIcon,
-  PencilIcon,
-  ChevronUpIcon,
-  ChevronDownIcon,
-  FunnelIcon,
-  CalendarIcon
 } from '@heroicons/react/24/outline';
-import { UltimaIADisplay } from '@/components/UltimaIADisplay';
 import { Pagination } from '@/components/Pagination';
 import { FiltrosAvanzados } from '@/components/FiltrosAvanzados';
 import { TablaClientes } from '@/components/TablaClientes';
@@ -25,6 +15,7 @@ interface SearchParams {
   search?: string;
   estado?: string;
   industria?: string;
+  ciudad?: string;
   fechaDesde?: string;
   fechaHasta?: string;
   conIA?: string;
@@ -52,19 +43,28 @@ export default async function ClientesPage({
   // Obtener searchParams de manera async
   const params = await searchParams;
 
+  // Valid sort fields to prevent injection/corruption
+  const validSortFields = [
+    'nombre', 'email', 'telefono', 'estado', 'prioridad', 'industria',
+    'ciudad', 'provincia', 'fuente', 'fechaCreacion', 'fechaModific',
+    'ultimoContacto', 'scoreConversion', 'agente', 'ultimaIA', 'sitioWeb'
+  ];
+
   // Parámetros de búsqueda con defaults
   const search = params.search || '';
   const estado = params.estado || '';
   const industria = params.industria || '';
+  const ciudad = params.ciudad || '';
   const fechaDesde = params.fechaDesde || '';
   const fechaHasta = params.fechaHasta || '';
   const conIA = params.conIA || '';
   const conEmail = params.conEmail || '';
   const conTelefono = params.conTelefono || '';
   const conSitioWeb = params.conSitioWeb || '';
-  const sortField = params.sort || 'fechaCreacion';
-  const sortOrder = params.order || 'desc';
-  const page = parseInt(params.page || '1');
+  const rawSortField = params.sort || 'fechaCreacion';
+  const sortField = validSortFields.includes(rawSortField) ? rawSortField : 'fechaCreacion';
+  const sortOrder = params.order === 'asc' ? 'asc' : 'desc';
+  const page = parseInt(params.page || '1') || 1;
   const pageSize = 20;
   const mostrarFiltros = params.mostrarFiltros || '';
 
@@ -89,7 +89,11 @@ export default async function ClientesPage({
   if (industria) {
     whereClause.industria = industria;
   }
-  
+
+  if (ciudad) {
+    whereClause.ciudad = ciudad;
+  }
+
   if (fechaDesde || fechaHasta) {
     whereClause.fechaCreacion = {} as { gte?: Date; lte?: Date };
     const fechaCreacionClause = whereClause.fechaCreacion as { gte?: Date; lte?: Date };
@@ -140,7 +144,7 @@ export default async function ClientesPage({
   const thirtyDaysAgo = new Date(new Date().setDate(new Date().getDate() - 30));
 
   // Fetch all data in parallel for better performance
-  const [clientes, totalClientes, industriasData, totalClientesGlobal, clientesActivos, nuevosEsteMes] = await Promise.all([
+  const [clientes, totalClientes, industriasData, ciudadesData, totalClientesGlobal, clientesActivos, nuevosEsteMes] = await Promise.all([
     prisma.cliente.findMany({
       where: whereClause,
       orderBy: orderByClause,
@@ -161,6 +165,11 @@ export default async function ClientesPage({
       where: { industria: { not: null } },
       distinct: ['industria']
     }),
+    prisma.cliente.findMany({
+      select: { ciudad: true },
+      where: { ciudad: { not: null } },
+      distinct: ['ciudad']
+    }),
     prisma.cliente.count(),
     prisma.cliente.count({ where: { estado: { not: 'PERDIDO' } } }),
     prisma.cliente.count({ where: { fechaCreacion: { gte: thirtyDaysAgo } } })
@@ -171,39 +180,15 @@ export default async function ClientesPage({
     .filter((industria): industria is string => Boolean(industria))
     .sort();
 
+  const ciudadesDisponibles = ciudadesData
+    .map(item => item.ciudad)
+    .filter((c): c is string => Boolean(c))
+    .sort();
+
   const totalPages = Math.ceil(totalClientes / pageSize);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex justify-between items-center h-16">
-            <div className="flex items-center space-x-4">
-              <Link href="/" className="flex items-center">
-                <BuildingOffice2Icon className="h-8 w-8 text-blue-500 mr-3" />
-                <h1 className="text-xl font-bold text-gray-900">CRM Clientes</h1>
-              </Link>
-              <nav className="hidden md:flex space-x-8">
-                <Link href="/" className="text-gray-500 hover:text-gray-900">Dashboard</Link>
-                <Link href="/clientes" className="text-blue-600 font-medium">Clientes</Link>
-                <Link href="/actividades" className="text-gray-500 hover:text-gray-900">Actividades</Link>
-              </nav>
-            </div>
-            <div className="flex items-center space-x-4">
-              <Link href="/clientes/nuevo">
-                <Button>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Nuevo Cliente
-                </Button>
-              </Link>
-              <LogoutButton />
-            </div>
-          </div>
-        </div>
-      </header>
-
-      {/* Main Content */}
+    <AuthenticatedLayout currentPath="/clientes" userRole={session.user?.role}>
       <main className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         <div className="mb-8">
           <div className="flex justify-between items-center">
@@ -254,6 +239,7 @@ export default async function ClientesPage({
             search={search}
             estado={estado}
             industria={industria}
+            ciudad={ciudad}
             fechaDesde={fechaDesde}
             fechaHasta={fechaHasta}
             conIA={conIA}
@@ -263,6 +249,7 @@ export default async function ClientesPage({
             sortField={sortField}
             sortOrder={sortOrder}
             industriasDisponibles={industriasDisponibles}
+            ciudadesDisponibles={ciudadesDisponibles}
             mostrarFiltros={mostrarFiltros}
             columnas={params.columnas}
           />
@@ -293,12 +280,12 @@ export default async function ClientesPage({
               <UsersIcon className="mx-auto h-12 w-12 text-gray-400" />
               <h3 className="mt-2 text-sm font-medium text-gray-900">No hay clientes</h3>
               <p className="mt-1 text-sm text-gray-500">
-                {search || estado || industria || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb ? 
+                {search || estado || industria || ciudad || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb ?
                   'No se encontraron clientes con los filtros aplicados.' :
                   'Comienza agregando tu primer cliente.'
                 }
               </p>
-              {(search || estado || industria || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb) && (
+              {(search || estado || industria || ciudad || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb) && (
                 <div className="mt-6">
                   <Link href="/clientes">
                     <Button variant="outline">Limpiar filtros</Button>
@@ -309,6 +296,6 @@ export default async function ClientesPage({
           )}
         </div>
       </main>
-    </div>
+    </AuthenticatedLayout>
   );
 }

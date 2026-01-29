@@ -65,7 +65,7 @@ export default async function Home() {
     })
   ]);
   return (
-    <AuthenticatedLayout currentPath="/">
+    <AuthenticatedLayout currentPath="/" userRole={session.user?.role}>
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Welcome Section */}
         <div className="mb-8">
