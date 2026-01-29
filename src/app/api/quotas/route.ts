@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { getAllQuotasInfo, resetAllQuotas } from '@/lib/quota-manager'
+import { getAllQuotasInfo, getAllExtendedQuotasInfo, resetAllQuotas } from '@/lib/quota-manager'
 import { logger } from '@/lib/logger'
 import { hasPermission } from '@/lib/rbac'
 import {
@@ -22,14 +22,12 @@ export async function GET() {
       return errorResponse('Permisos insuficientes', { status: 403, code: 'FORBIDDEN' })
     }
 
-    const quotasInfo = await getAllQuotasInfo()
+    // Use extended info for admin settings dashboard
+    const quotasInfo = await getAllExtendedQuotasInfo()
 
     logger.debug('Quotas fetched', { userId: session.user.id })
 
-    return successResponse({
-      quotas: quotasInfo,
-      timestamp: new Date().toISOString()
-    })
+    return successResponse(quotasInfo)
 
   } catch (error) {
     logger.error('Error fetching quotas', error instanceof Error ? error : new Error(String(error)))

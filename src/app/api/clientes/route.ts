@@ -3,6 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { registrarClienteCreado } from '@/lib/actividades-automaticas'
 import { logger } from '@/lib/logger'
+import { EstadoCliente, PrioridadCliente, FuenteCliente, Prisma } from '@prisma/client'
 import {
   ClienteFiltersSchema,
   CreateClienteDTOSchema,
@@ -40,16 +41,8 @@ export async function GET(request: NextRequest) {
 
     const filters = validationResult.data
 
-    // Build where clause with proper typing
-    const where: {
-      OR?: Array<Record<string, unknown>>;
-      estado?: string;
-      prioridad?: string;
-      fuente?: string;
-      agentId?: string;
-      industria?: string;
-      deletedAt: null;
-    } = {
+    // Build where clause with proper Prisma typing
+    const where: Prisma.ClienteWhereInput = {
       deletedAt: null // Exclude soft-deleted clients
     }
 
@@ -61,9 +54,9 @@ export async function GET(request: NextRequest) {
       ]
     }
 
-    if (filters.estado) where.estado = filters.estado
-    if (filters.prioridad) where.prioridad = filters.prioridad
-    if (filters.fuente) where.fuente = filters.fuente
+    if (filters.estado) where.estado = filters.estado as EstadoCliente
+    if (filters.prioridad) where.prioridad = filters.prioridad as PrioridadCliente
+    if (filters.fuente) where.fuente = filters.fuente as FuenteCliente
     if (filters.agentId) where.agentId = filters.agentId
     if (filters.industria) where.industria = filters.industria
 

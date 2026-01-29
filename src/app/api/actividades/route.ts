@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { TipoActividad, Prisma } from '@prisma/client'
 import {
   ActividadFiltersSchema,
   CreateActividadDTOSchema,
@@ -35,16 +36,12 @@ export async function GET(request: NextRequest) {
 
     const filters = validationResult.data
 
-    // Build where clause with proper typing
-    const where: {
-      clienteId?: string;
-      usuarioId?: string;
-      tipo?: string;
-    } = {}
+    // Build where clause with proper Prisma typing
+    const where: Prisma.ActividadWhereInput = {}
 
     if (filters.clienteId) where.clienteId = filters.clienteId
     if (filters.usuarioId) where.usuarioId = filters.usuarioId
-    if (filters.tipo) where.tipo = filters.tipo
+    if (filters.tipo) where.tipo = filters.tipo as TipoActividad
 
     // Fetch activities
     const actividades = await prisma.actividad.findMany({
