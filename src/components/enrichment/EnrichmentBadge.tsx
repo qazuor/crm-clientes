@@ -1,82 +1,92 @@
 'use client';
 
-import { useAIEnrichmentData } from '@/hooks/useAIEnrichment';
+import { useEnrichment } from '@/hooks/useEnrichment';
 
 interface EnrichmentBadgeProps {
   clienteId: string;
 }
 
 /**
- * Small badge showing enrichment status for a client
+ * Small badge showing enrichment status for a client.
+ * Uses the unified useEnrichment hook.
  */
 export function EnrichmentBadge({ clienteId }: EnrichmentBadgeProps) {
-  const { data, isLoading } = useAIEnrichmentData(clienteId);
+  const { latestEnrichment, enrichmentStatus, isLoading } = useEnrichment(clienteId);
 
   if (isLoading) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500 dark:bg-gray-700 dark:text-gray-400">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-500">
         ...
       </span>
     );
   }
 
-  if (!data?.enrichment) {
+  if (enrichmentStatus === 'NONE' || !latestEnrichment) {
     return (
-      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600 dark:bg-gray-700 dark:text-gray-400">
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-600">
         Sin datos IA
       </span>
     );
   }
 
-  // Count how many fields have data
-  const enrichment = data.enrichment;
+  if (enrichmentStatus === 'PENDING') {
+    return (
+      <span className="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-amber-100 text-amber-800">
+        IA: Pendiente
+      </span>
+    );
+  }
+
+  // Count fields with data and compute average score
   let fieldsWithData = 0;
   let totalScore = 0;
   let scoreCount = 0;
 
-  if (enrichment.website) {
+  if (latestEnrichment.website) {
     fieldsWithData++;
-    if (enrichment.websiteScore) {
-      totalScore += enrichment.websiteScore;
+    if (latestEnrichment.websiteScore) {
+      totalScore += latestEnrichment.websiteScore;
       scoreCount++;
     }
   }
-  if (enrichment.industry) {
+  if (latestEnrichment.industry) {
     fieldsWithData++;
-    if (enrichment.industryScore) {
-      totalScore += enrichment.industryScore;
+    if (latestEnrichment.industryScore) {
+      totalScore += latestEnrichment.industryScore;
       scoreCount++;
     }
   }
-  if (enrichment.description) {
+  if (latestEnrichment.description) {
     fieldsWithData++;
-    if (enrichment.descriptionScore) {
-      totalScore += enrichment.descriptionScore;
+    if (latestEnrichment.descriptionScore) {
+      totalScore += latestEnrichment.descriptionScore;
       scoreCount++;
     }
   }
-  if (enrichment.emails && enrichment.emails.length > 0) fieldsWithData++;
-  if (enrichment.phones && enrichment.phones.length > 0) fieldsWithData++;
-  if (enrichment.socialProfiles && Object.keys(enrichment.socialProfiles).length > 0) fieldsWithData++;
+  if (latestEnrichment.emails && Array.isArray(latestEnrichment.emails) && latestEnrichment.emails.length > 0) fieldsWithData++;
+  if (latestEnrichment.phones && Array.isArray(latestEnrichment.phones) && latestEnrichment.phones.length > 0) fieldsWithData++;
+  if (latestEnrichment.socialProfiles && typeof latestEnrichment.socialProfiles === 'object' && Object.keys(latestEnrichment.socialProfiles).length > 0) fieldsWithData++;
 
   const avgScore = scoreCount > 0 ? totalScore / scoreCount : 0;
   const percentage = Math.round(avgScore * 100);
 
-  let colorClass = 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-400';
+  let colorClass = 'bg-red-100 text-red-800';
   if (avgScore >= 0.8) {
-    colorClass = 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400';
+    colorClass = 'bg-green-100 text-green-800';
   } else if (avgScore >= 0.6) {
-    colorClass = 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-400';
+    colorClass = 'bg-yellow-100 text-yellow-800';
   } else if (avgScore >= 0.4) {
-    colorClass = 'bg-orange-100 text-orange-800 dark:bg-orange-900/30 dark:text-orange-400';
+    colorClass = 'bg-orange-100 text-orange-800';
   }
+
+  const statusLabel = enrichmentStatus === 'COMPLETE' ? '✓' : enrichmentStatus === 'PARTIAL' ? '~' : '';
 
   return (
     <span
       className={`inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${colorClass}`}
       title={`${fieldsWithData} campos enriquecidos, confianza promedio: ${percentage}%`}
     >
-      IA: {fieldsWithData} campos ({percentage}%)
+      IA: {fieldsWithData} campos ({percentage}%) {statusLabel}
     </span>
   );
 }
