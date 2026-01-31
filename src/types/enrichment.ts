@@ -123,6 +123,35 @@ export interface QuotaExtended {
   lastErrorAt: Date | null;
 }
 
+// Enrichment review status (per-record, for ClienteEnrichment.status)
+export type EnrichmentStatus = 'PENDING' | 'CONFIRMED';
+
+// Enrichment status for Cliente model (overall status)
+export type EnrichmentStatusEnum = 'NONE' | 'PENDING' | 'PARTIAL' | 'COMPLETE';
+
+// Enrichment mode for API calls
+export type EnrichmentMode = 'ai' | 'web';
+
+// Per-field review status
+export type FieldReviewStatus = 'PENDING' | 'CONFIRMED' | 'REJECTED';
+
+// Per-field review action (includes edit)
+export type FieldReviewAction = 'confirm' | 'reject' | 'edit';
+
+// Fields that can be reviewed individually
+export const REVIEWABLE_FIELDS = [
+  'website',
+  'industry',
+  'description',
+  'companySize',
+  'address',
+  'emails',
+  'phones',
+  'socialProfiles',
+] as const;
+
+export type ReviewableField = (typeof REVIEWABLE_FIELDS)[number];
+
 // Client Enrichment Data
 export interface ScoredValue<T> {
   value: T;
@@ -148,6 +177,10 @@ export interface ClienteEnrichmentData {
   socialProfiles: Record<string, string> | null;
   aiProvidersUsed: string[] | null;
   enrichedAt: Date | null;
+  fieldStatuses: Record<string, FieldReviewStatus> | null;
+  status: EnrichmentStatus;
+  reviewedAt: Date | null;
+  reviewedBy: string | null;
 }
 
 // Website Analysis Data
@@ -224,6 +257,61 @@ export interface AccessibilityIssue {
   description: string;
   impact: 'critical' | 'serious' | 'moderate' | 'minor';
   count?: number;
+}
+
+// Enrichment options for triggering enrichment from the modal
+export interface EnrichmentOptions {
+  mode: EnrichmentMode;
+  provider?: AIProvider | 'auto';
+  quick?: boolean;
+  confidenceThreshold?: number;
+  useExternalApis?: boolean;
+  verifyEmails?: boolean;
+  searchGoogleMaps?: boolean;
+}
+
+// Bulk enrichment options
+export interface BulkEnrichmentOptions {
+  clienteIds: string[];
+  includeAI?: boolean;
+  includeWebsiteAnalysis?: boolean;
+  provider?: AIProvider | 'auto';
+  confidenceThreshold?: number;
+}
+
+// History entry for enrichment timeline
+export interface EnrichmentHistoryEntry {
+  id: string;
+  type: 'ai' | 'web';
+  enrichedAt: Date;
+  providers: string[];
+  fieldsFound: number;
+  fieldsConfirmed: number;
+  fieldsRejected: number;
+  status: EnrichmentStatus;
+}
+
+// GET /api/clientes/[id]/enrich response
+export interface EnrichmentGetResponse {
+  latestEnrichment: ClienteEnrichmentData | null;
+  websiteAnalysis: WebsiteAnalysisData | null;
+  history: EnrichmentHistoryEntry[];
+  enrichmentStatus: EnrichmentStatusEnum;
+}
+
+// PATCH /api/clientes/[id]/enrich request body
+export interface EnrichmentPatchRequest {
+  action: FieldReviewAction;
+  fields: string[];
+  editedValues?: Record<string, unknown>;
+  enrichmentId?: string;
+}
+
+// Cooldown info
+export interface CooldownInfo {
+  shouldWarn: boolean;
+  lastEnrichedAt: Date | null;
+  hoursAgo: number | null;
 }
 
 // API Response types

@@ -39,6 +39,7 @@ IMPORTANT RULES:
 6. For social profiles, include the full profile URL.
 7. Be specific and accurate - quality over quantity.
 8. Cite your reasoning in the "source" field when applicable.
+9. ALL text values in the response (descriptions, industry names, sources, reasoning) MUST be written in Spanish. Do not use English for any text content.
 
 RESPONSE FORMAT:
 Always respond with valid JSON only. No explanations outside the JSON.`;
@@ -81,16 +82,18 @@ ${clientInfo}
 Please find the following information:
 ${requestedFields}
 
+IMPORTANT: All text content (descriptions, industry names, source/reasoning explanations) MUST be written in Spanish.
+
 Respond with a JSON object containing:
 {
-  "website": { "value": "https://...", "score": 0.95, "source": "reasoning" } | null,
-  "emails": { "value": [{"email": "...", "type": "..."}], "score": 0.8, "source": "reasoning" } | null,
-  "phones": { "value": [{"number": "...", "type": "..."}], "score": 0.7, "source": "reasoning" } | null,
-  "address": { "value": "full address", "score": 0.85, "source": "reasoning" } | null,
-  "description": { "value": "...", "score": 0.9, "source": "reasoning" } | null,
-  "industry": { "value": "...", "score": 0.88, "source": "reasoning" } | null,
-  "companySize": { "value": "small|medium|large|enterprise", "score": 0.75, "source": "reasoning" } | null,
-  "socialProfiles": { "value": {"linkedin": "url", "facebook": "url", ...}, "score": 0.82, "source": "reasoning" } | null
+  "website": { "value": "https://...", "score": 0.95, "source": "razonamiento" } | null,
+  "emails": { "value": [{"email": "...", "type": "..."}], "score": 0.8, "source": "razonamiento" } | null,
+  "phones": { "value": [{"number": "...", "type": "..."}], "score": 0.7, "source": "razonamiento" } | null,
+  "address": { "value": "direccion completa", "score": 0.85, "source": "razonamiento" } | null,
+  "description": { "value": "descripcion en espanol", "score": 0.9, "source": "razonamiento" } | null,
+  "industry": { "value": "industria en espanol", "score": 0.88, "source": "razonamiento" } | null,
+  "companySize": { "value": "pequena|mediana|grande|enterprise", "score": 0.75, "source": "razonamiento" } | null,
+  "socialProfiles": { "value": {"linkedin": "url", "facebook": "url", ...}, "score": 0.82, "source": "razonamiento" } | null
 }
 
 Only include fields that were requested. Use null for fields you cannot find with confidence.`;
@@ -104,12 +107,14 @@ export function getUrlVerificationPrompt(url: string, companyName: string): stri
 
 URL: ${url}
 
+IMPORTANT: Write the "reasoning" field in Spanish.
+
 Analyze and respond with JSON:
 {
   "isValid": true/false,
   "isOfficial": true/false,
   "confidence": 0.0-1.0,
-  "reasoning": "explanation",
+  "reasoning": "explicacion en espanol",
   "alternativeUrl": "correct URL if different" | null
 }`;
 }
@@ -129,11 +134,13 @@ export function getConsensusPrompt(
 
 ${resultsText}
 
+IMPORTANT: Write the "reasoning" field in Spanish.
+
 Respond with JSON:
 {
   "bestValue": <the most accurate value>,
   "confidence": 0.0-1.0,
-  "reasoning": "why this value was chosen",
+  "reasoning": "razon por la cual se eligio este valor",
   "allValuesMatch": true/false
 }`;
 }

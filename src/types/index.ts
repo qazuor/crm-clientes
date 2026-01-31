@@ -2,26 +2,22 @@
 export type UserRole = 'ADMIN' | 'MANAGER' | 'AGENT'
 
 export type FuenteCliente =
+  | 'IMPORTADO'
   | 'MANUAL'
-  | 'WEB'
   | 'REFERIDO'
-  | 'MARKETING'
-  | 'COLD_CALL'
-  | 'EVENTO'
-  | 'OTRO'
+  | 'CONTACTO_CLIENTE'
 
 export type EstadoCliente =
   | 'NUEVO'
-  | 'CONTACTADO'
-  | 'CALIFICADO'
-  | 'INTERESADO'
-  | 'PROPUESTA_ENVIADA'
-  | 'NEGOCIACION'
-  | 'CONVERTIDO'
-  | 'PERDIDO'
-  | 'INACTIVO'
+  | 'PRIMER_CONTACTO'
+  | 'EN_TRATATIVAS'
+  | 'EN_DESARROLLO'
+  | 'FINALIZADO'
+  | 'RECONTACTO'
 
 export type PrioridadCliente = 'BAJA' | 'MEDIA' | 'ALTA' | 'CRITICA'
+
+export type EnrichmentStatusType = 'NONE' | 'PENDING' | 'PARTIAL' | 'COMPLETE'
 
 export type TipoActividad =
   | 'LLAMADA'
@@ -31,6 +27,9 @@ export type TipoActividad =
   | 'NOTA'
   | 'PROPUESTA'
   | 'SEGUIMIENTO'
+
+export type CanalContacto = 'EMAIL' | 'WHATSAPP'
+export type EstadoMensaje = 'PENDIENTE' | 'ENVIADO' | 'ERROR'
 
 // Interfaces principales
 export interface User {
@@ -64,14 +63,12 @@ export interface Cliente {
   fuente: FuenteCliente
   estado: EstadoCliente
   prioridad: PrioridadCliente
-  scoreConversion?: number | null
-  agentId?: string | null
   fechaCreacion: Date
   fechaModific: Date
   ultimoContacto?: Date | null
   ultimaIA?: Date | null
+  enrichmentStatus?: EnrichmentStatusType
   notas?: string | null
-  agente?: User | null
   actividades?: Actividad[]
 }
 
@@ -109,7 +106,6 @@ export interface CreateClienteDTO {
   fuente: FuenteCliente
   estado: EstadoCliente
   prioridad: PrioridadCliente
-  agentId?: string
   notas?: string
 }
 
@@ -152,7 +148,6 @@ export interface ClienteFilters {
   estado?: EstadoCliente
   prioridad?: PrioridadCliente
   fuente?: FuenteCliente
-  agentId?: string
   industria?: string
   fechaDesde?: Date
   fechaHasta?: Date
@@ -178,10 +173,7 @@ export interface ClienteStats {
   porEstado: Record<EstadoCliente, number>
   porPrioridad: Record<PrioridadCliente, number>
   porFuente: Record<FuenteCliente, number>
-  scorePromedio: number
   nuevosUltimoMes: number
-  convertidosUltimoMes: number
-  tasaConversion: number
 }
 
 export interface ActividadStats {
@@ -221,6 +213,64 @@ export interface Notification {
   timestamp: Date
   read: boolean
   userId: string
+}
+
+// Plantillas de contacto
+export interface PlantillaContacto {
+  id: string
+  nombre: string
+  descripcion?: string | null
+  canal: CanalContacto
+  asunto?: string | null
+  cuerpo: string
+  esActiva: boolean
+  creadoPorId: string
+  createdAt: Date
+  updatedAt: Date
+  creadoPor?: User
+}
+
+export interface CreatePlantillaDTO {
+  nombre: string
+  descripcion?: string
+  canal: CanalContacto
+  asunto?: string
+  cuerpo: string
+}
+
+export interface UpdatePlantillaDTO extends Partial<CreatePlantillaDTO> {
+  id: string
+}
+
+// Mensajes
+export interface Mensaje {
+  id: string
+  canal: CanalContacto
+  destinatario: string
+  asunto?: string | null
+  cuerpo: string
+  estado: EstadoMensaje
+  errorDetalle?: string | null
+  clienteId: string
+  usuarioId: string
+  plantillaId?: string | null
+  createdAt: Date
+  updatedAt: Date
+  cliente?: Cliente
+  usuario?: User
+  plantilla?: PlantillaContacto
+}
+
+export interface SendMensajeDTO {
+  clienteId: string
+  plantillaId: string
+  canal: CanalContacto
+}
+
+export interface SendBulkMensajeDTO {
+  clienteIds: string[]
+  plantillaId: string
+  canal: CanalContacto
 }
 
 // Tipos de exportación

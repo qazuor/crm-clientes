@@ -3,26 +3,20 @@ import { z } from 'zod';
 // Enum schemas
 export const EstadoClienteSchema = z.enum([
   'NUEVO',
-  'CONTACTADO',
-  'CALIFICADO',
-  'INTERESADO',
-  'PROPUESTA_ENVIADA',
-  'NEGOCIACION',
-  'CONVERTIDO',
-  'PERDIDO',
-  'INACTIVO'
+  'PRIMER_CONTACTO',
+  'EN_TRATATIVAS',
+  'EN_DESARROLLO',
+  'FINALIZADO',
+  'RECONTACTO'
 ]);
 
 export const PrioridadClienteSchema = z.enum(['BAJA', 'MEDIA', 'ALTA', 'CRITICA']);
 
 export const FuenteClienteSchema = z.enum([
+  'IMPORTADO',
   'MANUAL',
-  'WEB',
   'REFERIDO',
-  'MARKETING',
-  'COLD_CALL',
-  'EVENTO',
-  'OTRO'
+  'CONTACTO_CLIENTE'
 ]);
 
 // Create Cliente DTO Schema
@@ -46,7 +40,6 @@ export const CreateClienteDTOSchema = z.object({
   fuente: FuenteClienteSchema.default('MANUAL'),
   estado: EstadoClienteSchema.default('NUEVO'),
   prioridad: PrioridadClienteSchema.default('MEDIA'),
-  agentId: z.string().uuid('ID de agente inválido').optional().nullable(),
   notas: z.string().max(5000).optional().nullable(),
 });
 
@@ -59,7 +52,6 @@ export const ClienteFiltersSchema = z.object({
   estado: EstadoClienteSchema.optional(),
   prioridad: PrioridadClienteSchema.optional(),
   fuente: FuenteClienteSchema.optional(),
-  agentId: z.string().uuid().optional(),
   industria: z.string().max(100).optional(),
   limit: z.coerce.number().min(1).max(100).default(10),
   offset: z.coerce.number().min(0).default(0),

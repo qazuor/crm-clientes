@@ -601,15 +601,11 @@ export class WebsiteAnalysisService {
         update: analysisData,
       });
 
-      // Also update the client record with key fields
+      // Update the client record with SSL status
       await prisma.cliente.update({
         where: { id: clienteId },
         data: {
-          screenshotDesktop: result.screenshotDesktop,
-          screenshotMobile: result.screenshotMobile,
-          pageSpeedScore: result.performanceScore?.toString(),
           tieneSSL: result.ssl?.valid,
-          lastEnrichment: new Date(),
         },
       });
 

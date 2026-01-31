@@ -17,14 +17,11 @@ enum UserRole {
 
 enum EstadoCliente {
   NUEVO
-  CONTACTADO
-  CALIFICADO
-  INTERESADO
-  PROPUESTA_ENVIADA
-  NEGOCIACION
-  CONVERTIDO
-  PERDIDO
-  INACTIVO
+  PRIMER_CONTACTO
+  EN_TRATATIVAS
+  EN_DESARROLLO
+  FINALIZADO
+  RECONTACTO
 }
 
 enum PrioridadCliente {
@@ -35,13 +32,10 @@ enum PrioridadCliente {
 }
 
 enum FuenteCliente {
+  IMPORTADO
   MANUAL
-  WEB
   REFERIDO
-  MARKETING
-  COLD_CALL
-  EVENTO
-  OTRO
+  CONTACTO_CLIENTE
 }
 
 enum TipoActividad {
@@ -59,6 +53,24 @@ enum TipoActividad {
   CONTACTO_AUTOMATICO
 }
 
+enum CanalContacto {
+  EMAIL
+  WHATSAPP
+}
+
+enum EnrichmentStatusEnum {
+  NONE
+  PENDING
+  PARTIAL
+  COMPLETE
+}
+
+enum EstadoMensaje {
+  PENDIENTE
+  ENVIADO
+  ERROR
+}
+
 model User {
   id            String         @id @default(cuid())
   email         String         @unique
@@ -69,9 +81,10 @@ model User {
   updatedAt     DateTime       @updatedAt
   accounts      Account[]
   activities    Actividad[]
-  clientsOwned  Cliente[]      @relation("AgentClientes")
   sessions      Session[]
   notifications Notification[]
+  plantillas    PlantillaContacto[]
+  mensajes      Mensaje[]
 
   @@index([role])
   @@map("users")
@@ -119,8 +132,6 @@ model Cliente {
   fuente          FuenteCliente    @default(MANUAL)
   estado          EstadoCliente    @default(NUEVO)
   prioridad       PrioridadCliente @default(MEDIA)
-  scoreConversion Float?           @default(0)
-  agentId         String?
   fechaCreacion   DateTime         @default(now())
   fechaModific    DateTime         @updatedAt
   ultimoContacto  DateTime?
@@ -133,31 +144,21 @@ model Cliente {
   tieneSSL        Boolean?
   twitter         String?
   whatsapp        String?
-  ultimaIA        DateTime?
-
-  // Enrichment fields
-  screenshotDesktop String?   // URL to blob storage
-  screenshotMobile  String?   // URL to blob storage
-  pageSpeedScore    String?   // JSON string
-  websiteMetrics    String?   @db.Text // JSON string
-  techStack         String?   @db.Text // JSON string
-  socialProfiles    String?   @db.Text // JSON string
-  lastEnrichment    DateTime?
-  enrichmentData    String?   @db.Text // JSON string
+  ultimaIA            DateTime?
+  enrichmentStatus    EnrichmentStatusEnum @default(NONE)
 
   // Soft delete
   deletedAt DateTime?
 
   // Relations
   actividades     Actividad[]
-  agente          User?              @relation("AgentClientes", fields: [agentId], references: [id])
-  enrichment      ClienteEnrichment?
+  enrichments     ClienteEnrichment[]
   websiteAnalysis WebsiteAnalysis?
+  mensajes        Mensaje[]
 
   @@index([email])
   @@index([telefono])
   @@index([estado])
-  @@index([agentId])
   @@index([industria])
   @@index([prioridad])
   @@index([fuente])
@@ -165,8 +166,8 @@ model Cliente {
   @@index([nombre])
   @@index([deletedAt])
   @@index([estado, prioridad])
-  @@index([agentId, estado])
   @@index([deletedAt, estado])
+  @@index([enrichmentStatus])
   @@map("clientes")
 }
 
@@ -284,10 +285,10 @@ model EnrichmentSettings {
   @@map("enrichment_settings")
 }
 
-// Enriquecimiento IA del Cliente (1:1)
+// Enriquecimiento IA del Cliente (1:N - historial)
 model ClienteEnrichment {
   id        String @id @default(cuid())
-  clienteId String @unique
+  clienteId String
 
   // Datos encontrados
   website          String?
@@ -308,9 +309,19 @@ model ClienteEnrichment {
   aiProvidersUsed String?   @db.Text // JSON
   enrichedAt      DateTime?
 
+  // Per-field review status
+  fieldStatuses String? @db.Text // JSON: per-field review status (PENDING | CONFIRMED | REJECTED)
+
+  // Review status
+  status     String    @default("CONFIRMED") // PENDING | CONFIRMED
+  reviewedAt DateTime?
+  reviewedBy String?
+
   cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
+  @@index([clienteId, enrichedAt])
+  @@index([status])
   @@map("cliente_enrichments")
 }
 
@@ -444,4 +455,55 @@ model Notification {
   @@index([userId, read])
   @@index([createdAt])
   @@map("notifications")
+}
+
+// Plantillas de contacto (email/WhatsApp)
+model PlantillaContacto {
+  id          String        @id @default(cuid())
+  nombre      String
+  descripcion String?
+  canal       CanalContacto
+  asunto      String?       // Solo para EMAIL
+  cuerpo      String        @db.Text
+  esActiva    Boolean       @default(true)
+  creadoPorId String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+
+  creadoPor User      @relation(fields: [creadoPorId], references: [id])
+  mensajes  Mensaje[]
+
+  @@index([canal])
+  @@index([esActiva])
+  @@index([creadoPorId])
+  @@map("plantillas_contacto")
+}
+
+// Historial de mensajes enviados
+model Mensaje {
+  id            String        @id @default(cuid())
+  canal         CanalContacto
+  destinatario  String
+  asunto        String?
+  cuerpo        String        @db.Text
+  estado        EstadoMensaje @default(PENDIENTE)
+  errorDetalle  String?       @db.Text
+  clienteId     String
+  usuarioId     String
+  plantillaId   String?
+  createdAt     DateTime      @default(now())
+  updatedAt     DateTime      @updatedAt
+
+  cliente   Cliente            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
+  usuario   User               @relation(fields: [usuarioId], references: [id])
+  plantilla PlantillaContacto? @relation(fields: [plantillaId], references: [id])
+
+  @@index([clienteId])
+  @@index([usuarioId])
+  @@index([plantillaId])
+  @@index([canal])
+  @@index([estado])
+  @@index([createdAt])
+  @@index([clienteId, createdAt])
+  @@map("mensajes")
 }

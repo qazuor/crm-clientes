@@ -111,6 +111,46 @@ export async function registrarContactoAutomatico(
   });
 }
 
+export async function registrarEmailEnviado(
+  clienteId: string,
+  usuarioId: string,
+  nombreCliente: string,
+  asunto: string,
+  nombrePlantilla?: string
+) {
+  const desc = nombrePlantilla
+    ? `Email enviado a "${nombreCliente}" usando plantilla "${nombrePlantilla}"`
+    : `Email enviado a "${nombreCliente}"`;
+  return registrarActividadAutomatica({
+    tipo: TipoActividad.EMAIL,
+    clienteId,
+    usuarioId,
+    descripcion: desc,
+    resultado: `Asunto: ${asunto}`,
+    proximoPaso: 'Esperar respuesta del cliente'
+  });
+}
+
+export async function registrarWhatsAppEnviado(
+  clienteId: string,
+  usuarioId: string,
+  nombreCliente: string,
+  preview: string,
+  nombrePlantilla?: string
+) {
+  const desc = nombrePlantilla
+    ? `Mensaje de WhatsApp enviado a "${nombreCliente}" usando plantilla "${nombrePlantilla}"`
+    : `Mensaje de WhatsApp enviado a "${nombreCliente}"`;
+  return registrarActividadAutomatica({
+    tipo: TipoActividad.CONTACTO_AUTOMATICO,
+    clienteId,
+    usuarioId,
+    descripcion: desc,
+    resultado: `Mensaje: ${preview}...`,
+    proximoPaso: 'Revisar respuesta y planificar seguimiento'
+  });
+}
+
 // Note: CAMBIO_ESTADO, CAMBIO_PRIORIDAD, CAMBIO_AGENTE are recorded as NOTA type
 // since they are informational notes about changes
 export async function registrarCambioEstado(
@@ -145,22 +185,3 @@ export async function registrarCambioPrioridad(
   });
 }
 
-export async function registrarCambioAgente(
-  clienteId: string,
-  usuarioId: string,
-  nombreCliente: string,
-  agenteAnterior: string | null,
-  agenteNuevo: string | null
-) {
-  const desde = agenteAnterior || 'Sin asignar';
-  const hacia = agenteNuevo || 'Sin asignar';
-
-  return registrarActividadAutomatica({
-    tipo: TipoActividad.NOTA,
-    clienteId,
-    usuarioId,
-    descripcion: `Agente asignado al cliente "${nombreCliente}" cambió de "${desde}" a "${hacia}"`,
-    resultado: `Agente asignado: ${hacia}`,
-    proximoPaso: agenteNuevo ? 'El nuevo agente debe revisar el cliente' : 'Asignar nuevo agente'
-  });
-}

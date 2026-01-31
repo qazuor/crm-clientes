@@ -306,7 +306,7 @@ export class ConsensusService {
         const response = await AISdkService.complete(
           availableProviders[0],
           [
-            { role: 'system', content: 'You are a data validation expert. Analyze the results and determine the most accurate value.' },
+            { role: 'system', content: 'You are a data validation expert. Analyze the results and determine the most accurate value. All text content in your response (reasoning, descriptions) MUST be written in Spanish.' },
             { role: 'user', content: consensusPrompt },
           ],
           options
@@ -344,7 +344,9 @@ export class ConsensusService {
   }
 
   /**
-   * Quick enrichment with single provider (faster, less accurate)
+   * Quick enrichment with provider fallback
+   * - If provider is specified: use only that provider, fail if it fails
+   * - If provider is undefined (auto): try each available provider sequentially until one succeeds
    */
   static async quickEnrich(
     client: ClientContext,
@@ -358,38 +360,81 @@ export class ConsensusService {
     const settings = await SettingsService.getEnrichmentSettings();
     const availableProviders = await AISdkService.getAvailableProviders();
 
-    const selectedProvider = provider ?? availableProviders[0];
-
-    if (!selectedProvider) {
+    if (availableProviders.length === 0) {
       logger.error('[Consensus] No AI providers available for quick enrich');
       throw new Error('No AI providers available');
     }
 
-    logger.debug('[Consensus] Quick enrich using provider', {
-      provider: selectedProvider,
-      matchMode: settings.matchMode,
-    });
-
     const fields = ['website', 'emails', 'phones', 'description', 'industry'];
     const systemPrompt = getEnrichmentSystemPrompt(settings.matchMode as 'exact' | 'fuzzy' | 'broad');
     const userPrompt = getEnrichmentPrompt(client, fields);
-
-    logger.debug('[Consensus] Quick enrich prompts', {
-      systemPromptLength: systemPrompt.length,
-      userPromptLength: userPrompt.length,
-      fields,
-    });
 
     const messages: AIMessage[] = [
       { role: 'system', content: systemPrompt },
       { role: 'user', content: userPrompt },
     ];
 
-    const startTime = Date.now();
-    const result = await AISdkService.complete(selectedProvider, messages, {
+    const options: AICompletionOptions = {
       temperature: settings.temperature,
       topP: settings.topP,
+    };
+
+    // Specific provider mode: validate and use only that provider
+    if (provider) {
+      if (!availableProviders.includes(provider)) {
+        throw new Error(`Provider '${provider}' is not available. Available: ${availableProviders.join(', ')}`);
+      }
+      return this.executeQuickEnrich(provider, client, messages, options, fields, settings.minConfidenceScore);
+    }
+
+    // Auto mode: try each provider sequentially with fallback
+    const providerErrors: Array<{ provider: AIProvider; error: string }> = [];
+
+    for (const candidateProvider of availableProviders) {
+      try {
+        logger.info('[Consensus] Auto mode: trying provider', { provider: candidateProvider });
+        return await this.executeQuickEnrich(candidateProvider, client, messages, options, fields, settings.minConfidenceScore);
+      } catch (error) {
+        const errorMsg = error instanceof Error ? error.message : String(error);
+        logger.warn('[Consensus] Auto mode: provider failed, trying next', {
+          provider: candidateProvider,
+          error: errorMsg,
+        });
+        providerErrors.push({ provider: candidateProvider, error: errorMsg });
+      }
+    }
+
+    // All providers failed
+    const errorSummary = providerErrors
+      .map(e => `${e.provider}: ${e.error}`)
+      .join('; ');
+    logger.error('[Consensus] Auto mode: all providers failed', undefined, { providerErrors });
+    throw new Error(`All AI providers failed. ${errorSummary}`);
+  }
+
+  /**
+   * Execute quick enrichment with a single provider
+   */
+  private static async executeQuickEnrich(
+    selectedProvider: AIProvider,
+    client: ClientContext,
+    messages: AIMessage[],
+    options: AICompletionOptions,
+    fields: string[],
+    minConfidenceScore: number
+  ): Promise<Partial<EnrichmentResult>> {
+    logger.debug('[Consensus] Quick enrich using provider', {
+      provider: selectedProvider,
     });
+
+    logger.debug('[Consensus] Quick enrich prompts', {
+      systemPromptLength: messages[0]?.content.length || 0,
+      userPromptLength: messages[1]?.content.length || 0,
+      fields,
+    });
+
+    const startTime = Date.now();
+    const result = await AISdkService.complete(selectedProvider, messages, options);
     const elapsed = Date.now() - startTime;
 
     logger.debug('[Consensus] Quick enrich response received', {
@@ -407,7 +452,7 @@ export class ConsensusService {
       logger.error('[Consensus] Failed to parse quick enrich response', undefined, {
         contentPreview: result.content.substring(0, 500),
       });
-      throw new Error('Failed to parse AI response');
+      throw new Error(`Failed to parse AI response from ${selectedProvider}`);
     }
 
     logger.debug('[Consensus] Quick enrich parsed result', {
@@ -421,7 +466,7 @@ export class ConsensusService {
     };
 
     for (const [field, data] of Object.entries(parsed)) {
-      if (data && data.value !== null && data.score >= settings.minConfidenceScore) {
+      if (data && data.value !== null && data.score >= minConfidenceScore) {
         logger.debug('[Consensus] Quick enrich field accepted', {
           field,
           score: data.score,
@@ -438,7 +483,7 @@ export class ConsensusService {
         logger.debug('[Consensus] Quick enrich field rejected (low confidence)', {
           field,
           score: data.score,
-          minRequired: settings.minConfidenceScore,
+          minRequired: minConfidenceScore,
         });
       }
     }
