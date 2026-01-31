@@ -17,7 +17,6 @@ interface EnrichmentFormProps {
   defaultConfidenceThreshold: number;
   availableProviders?: string[];
   isLoading: boolean;
-  isBulk?: boolean;
 }
 
 const ALL_PROVIDERS: { value: AIProvider | 'auto'; label: string }[] = [
@@ -38,7 +37,6 @@ export function EnrichmentForm({
   defaultConfidenceThreshold,
   availableProviders,
   isLoading,
-  isBulk = false,
 }: EnrichmentFormProps) {
   const [provider, setProvider] = useState<AIProvider | 'auto'>('auto');
   const [quick, setQuick] = useState(false);
@@ -76,7 +74,7 @@ export function EnrichmentForm({
           value={provider}
           onChange={(e) => setProvider(e.target.value as AIProvider | 'auto')}
           disabled={isLoading}
-          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+          className="w-full rounded border border-gray-300 bg-white px-3 py-2 text-sm text-gray-900 focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
           {providerOptions.map((p) => (
             <option key={p.value} value={p.value}>
@@ -92,7 +90,7 @@ export function EnrichmentForm({
           Profundidad de búsqueda
         </label>
         <div className="flex gap-3">
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm text-gray-900">
             <input
               type="radio"
               checked={quick}
@@ -103,7 +101,7 @@ export function EnrichmentForm({
             Rápida
             <span className="text-xs text-gray-500">(1 proveedor)</span>
           </label>
-          <label className="flex items-center gap-2 text-sm">
+          <label className="flex items-center gap-2 text-sm text-gray-900">
             <input
               type="radio"
               checked={!quick}
@@ -185,17 +183,15 @@ export function EnrichmentForm({
         >
           {isLoading ? 'Enriqueciendo...' : 'Enriquecer con IA'}
         </button>
-        {!isBulk && (
-          <button
-            type="button"
-            onClick={onSubmitWeb}
-            disabled={isLoading || !clientHasWebsite}
-            title={!clientHasWebsite ? 'El cliente no tiene sitio web configurado' : undefined}
-            className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-          >
-            Analizar Web
-          </button>
-        )}
+        <button
+          type="button"
+          onClick={onSubmitWeb}
+          disabled={isLoading || !clientHasWebsite}
+          title={!clientHasWebsite ? 'El cliente no tiene sitio web configurado' : undefined}
+          className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+        >
+          Analizar Web
+        </button>
       </div>
     </div>
   );
