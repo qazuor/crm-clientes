@@ -250,10 +250,10 @@ export class BulkEnrichmentService {
                 },
               });
 
-              // Update enrichmentStatus on Cliente
+              // Update enrichmentStatus and ultimaIA on Cliente
               await prisma.cliente.update({
                 where: { id: cliente.id },
-                data: { enrichmentStatus: 'PENDING' },
+                data: { enrichmentStatus: 'PENDING', ultimaIA: new Date() },
               });
 
               result.aiEnriched = true;

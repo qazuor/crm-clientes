@@ -198,10 +198,10 @@ export async function POST(request: NextRequest, context: RouteContext) {
         },
       });
 
-      // Update enrichmentStatus on Cliente
+      // Update enrichmentStatus and ultimaIA on Cliente
       await prisma.cliente.update({
         where: { id },
-        data: { enrichmentStatus: 'PENDING' },
+        data: { enrichmentStatus: 'PENDING', ultimaIA: new Date() },
       });
 
       // Log activity
