@@ -43,6 +43,19 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
 
   const wa = websiteAnalysis;
 
+  // techStack may arrive as a JSON string from the DB — parse safely
+  const techStack: Array<{ name: string; category?: string; version?: string }> =
+    (() => {
+      if (!wa.techStack) return [];
+      if (Array.isArray(wa.techStack)) return wa.techStack;
+      try {
+        const parsed = JSON.parse(wa.techStack as unknown as string);
+        return Array.isArray(parsed) ? parsed : [];
+      } catch {
+        return [];
+      }
+    })();
+
   const toggleSection = (section: string) => {
     setExpanded((prev) => (prev === section ? null : section));
   };
@@ -164,14 +177,14 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
         )}
 
         {/* Tech Stack */}
-        {wa.techStack && wa.techStack.length > 0 && (
+        {techStack.length > 0 && (
           <CollapsibleSection
-            title={`Tech Stack (${wa.techStack.length})`}
+            title={`Tech Stack (${techStack.length})`}
             isExpanded={expanded === 'tech'}
             onToggle={() => toggleSection('tech')}
           >
             <div className="flex flex-wrap gap-1">
-              {wa.techStack.map((t) => (
+              {techStack.map((t) => (
                 <span
                   key={t.name}
                   className="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700"
