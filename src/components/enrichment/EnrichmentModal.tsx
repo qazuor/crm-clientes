@@ -2,11 +2,12 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { XMarkIcon } from '@heroicons/react/24/outline';
-import { useEnrichment } from '@/hooks/useEnrichment';
+import { XMarkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { useEnrichment, type BatchFieldItem } from '@/hooks/useEnrichment';
 import { EnrichmentForm } from './EnrichmentForm';
 import { EnrichmentReview, type ReviewField } from './EnrichmentReview';
 import { EnrichmentProgress } from './shared/EnrichmentProgress';
+import { REVIEWABLE_FIELDS } from '@/types/enrichment';
 import type { AIProvider, FieldReviewStatus } from '@/types/enrichment';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -39,6 +40,22 @@ interface EnrichmentModalProps {
 
 type ModalStep = 'form' | 'loading' | 'review' | 'done';
 
+interface BulkResultItem {
+  clienteId: string;
+  clienteName: string;
+  success: boolean;
+  aiEnriched?: boolean;
+  websiteAnalyzed?: boolean;
+  error?: string;
+}
+
+interface BulkResult {
+  total: number;
+  successful: number;
+  failed: number;
+  results: BulkResultItem[];
+}
+
 /**
  * Main enrichment modal overlay. Works for both individual (1 client) and bulk (N clients).
  */
@@ -61,6 +78,8 @@ export function EnrichmentModal({
   const [step, setStep] = useState<ModalStep>('form');
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
+  const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+  const [bulkReviewDone, setBulkReviewDone] = useState(false);
 
   // Build review fields from latest enrichment
   const reviewFields = useMemo((): ReviewField[] => {
@@ -150,6 +169,14 @@ export function EnrichmentModal({
   // Default confidence threshold (could come from settings, default 0.6)
   const defaultThreshold = 0.6;
 
+  // Enriched client IDs from bulk result (for batch confirm/reject)
+  const enrichedClientIds = useMemo(() => {
+    if (!bulkResult) return [];
+    return bulkResult.results
+      .filter((r) => r.success && r.aiEnriched)
+      .map((r) => r.clienteId);
+  }, [bulkResult]);
+
   const handleSubmitAI = useCallback(
     async (options: {
       provider: AIProvider | 'auto';
@@ -173,13 +200,14 @@ export function EnrichmentModal({
 
       try {
         if (isBulk) {
-          await enrichment.bulk.enrich({
+          const result = await enrichment.bulk.enrich({
             clienteIds,
             includeAI: true,
             includeWebsiteAnalysis: false,
             provider: options.provider,
           });
-          setStep('done');
+          setBulkResult(result);
+          setStep('review');
         } else {
           await enrichment.enrich({
             mode: 'ai',
@@ -215,13 +243,23 @@ export function EnrichmentModal({
     setStep('loading');
 
     try {
-      await enrichment.enrichWeb();
-      setStep('done');
+      if (isBulk) {
+        const result = await enrichment.bulk.enrich({
+          clienteIds,
+          includeAI: false,
+          includeWebsiteAnalysis: true,
+        });
+        setBulkResult(result);
+        setStep('done');
+      } else {
+        await enrichment.enrichWeb();
+        setStep('done');
+      }
     } catch (err) {
       setEnrichError(err instanceof Error ? err.message : 'Error en análisis web');
       setStep('form');
     }
-  }, [enrichment, cooldownConfirmed]);
+  }, [enrichment, cooldownConfirmed, isBulk, clienteIds]);
 
   const handleReviewConfirm = useCallback(
     (fieldNames: string[]) => {
@@ -244,10 +282,44 @@ export function EnrichmentModal({
     [enrichment]
   );
 
+  // Bulk review: accept all pending fields for all enriched clients
+  const handleBulkConfirmAll = useCallback(async () => {
+    if (enrichedClientIds.length === 0) return;
+    const allFields = [...REVIEWABLE_FIELDS];
+    const items: BatchFieldItem[] = enrichedClientIds.map((clienteId) => ({
+      clienteId,
+      fields: allFields,
+    }));
+    try {
+      await enrichment.bulk.confirmBatch(items);
+      setBulkReviewDone(true);
+    } catch (err) {
+      setEnrichError(err instanceof Error ? err.message : 'Error al confirmar datos');
+    }
+  }, [enrichedClientIds, enrichment]);
+
+  // Bulk review: reject all pending fields for all enriched clients
+  const handleBulkRejectAll = useCallback(async () => {
+    if (enrichedClientIds.length === 0) return;
+    const allFields = [...REVIEWABLE_FIELDS];
+    const items: BatchFieldItem[] = enrichedClientIds.map((clienteId) => ({
+      clienteId,
+      fields: allFields,
+    }));
+    try {
+      await enrichment.bulk.rejectBatch(items);
+      setBulkReviewDone(true);
+    } catch (err) {
+      setEnrichError(err instanceof Error ? err.message : 'Error al rechazar datos');
+    }
+  }, [enrichedClientIds, enrichment]);
+
   const handleClose = () => {
     setStep('form');
     setCooldownConfirmed(false);
     setEnrichError(null);
+    setBulkResult(null);
+    setBulkReviewDone(false);
     onClose();
   };
 
@@ -302,7 +374,6 @@ export function EnrichmentModal({
                 defaultConfidenceThreshold={defaultThreshold}
                 availableProviders={enrichment.bulk.availableAIProviders}
                 isLoading={false}
-                isBulk={isBulk}
               />
             )}
 
@@ -318,7 +389,7 @@ export function EnrichmentModal({
               />
             )}
 
-            {/* Review step (single-client only) */}
+            {/* Review step: single-client */}
             {step === 'review' && !isBulk && (
               <EnrichmentReview
                 fields={reviewFields}
@@ -327,6 +398,20 @@ export function EnrichmentModal({
                 onReject={handleReviewReject}
                 onEdit={handleReviewEdit}
                 isReviewing={enrichment.isReviewing}
+              />
+            )}
+
+            {/* Review step: bulk */}
+            {step === 'review' && isBulk && bulkResult && (
+              <BulkReviewStep
+                bulkResult={bulkResult}
+                enrichedCount={enrichedClientIds.length}
+                onConfirmAll={handleBulkConfirmAll}
+                onRejectAll={handleBulkRejectAll}
+                onClose={handleClose}
+                isConfirming={enrichment.bulk.isConfirming}
+                isRejecting={enrichment.bulk.isRejecting}
+                reviewDone={bulkReviewDone}
               />
             )}
 
@@ -366,5 +451,145 @@ export function EnrichmentModal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+  );
+}
+
+/**
+ * Bulk review step: shows enrichment results per client and lets user accept/reject all.
+ */
+function BulkReviewStep({
+  bulkResult,
+  enrichedCount,
+  onConfirmAll,
+  onRejectAll,
+  onClose,
+  isConfirming,
+  isRejecting,
+  reviewDone,
+}: {
+  bulkResult: BulkResult;
+  enrichedCount: number;
+  onConfirmAll: () => void;
+  onRejectAll: () => void;
+  onClose: () => void;
+  isConfirming: boolean;
+  isRejecting: boolean;
+  reviewDone: boolean;
+}) {
+  const isProcessing = isConfirming || isRejecting;
+
+  if (reviewDone) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-6">
+        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
+          <CheckCircleIcon className="h-6 w-6 text-green-600" />
+        </div>
+        <p className="text-sm font-medium text-gray-900">
+          Revisión completada
+        </p>
+        <p className="text-xs text-gray-500">
+          Los datos han sido {isConfirming ? 'aceptados' : 'procesados'} correctamente.
+        </p>
+        <button
+          type="button"
+          onClick={onClose}
+          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+        >
+          Cerrar
+        </button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="flex flex-col gap-4">
+      {/* Summary */}
+      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
+        <div className="flex items-center justify-between text-sm">
+          <span className="font-medium text-gray-900">Resultados</span>
+          <span className="text-gray-500">
+            {bulkResult.successful}/{bulkResult.total} exitosos
+          </span>
+        </div>
+        {bulkResult.failed > 0 && (
+          <p className="mt-1 text-xs text-red-600">
+            {bulkResult.failed} cliente{bulkResult.failed !== 1 ? 's' : ''} con errores
+          </p>
+        )}
+      </div>
+
+      {/* Per-client results */}
+      <div className="max-h-60 overflow-y-auto">
+        <div className="flex flex-col gap-1.5">
+          {bulkResult.results.map((r) => (
+            <div
+              key={r.clienteId}
+              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
+                r.success
+                  ? 'bg-green-50 text-green-800'
+                  : 'bg-red-50 text-red-800'
+              }`}
+            >
+              {r.success ? (
+                <CheckCircleIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
+              ) : (
+                <XCircleIcon className="h-4 w-4 flex-shrink-0 text-red-500" />
+              )}
+              <span className="flex-1 truncate">{r.clienteName}</span>
+              {r.aiEnriched && (
+                <span className="text-xs text-green-600">IA</span>
+              )}
+              {r.websiteAnalyzed && (
+                <span className="text-xs text-green-600">Web</span>
+              )}
+              {r.error && (
+                <span className="text-xs text-red-500 truncate max-w-[120px]" title={r.error}>
+                  {r.error}
+                </span>
+              )}
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {/* Actions */}
+      {enrichedCount > 0 && (
+        <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
+          <p className="text-xs text-gray-500">
+            {enrichedCount} cliente{enrichedCount !== 1 ? 's' : ''} con datos pendientes de revisión
+          </p>
+          <div className="flex items-center gap-3">
+            <button
+              type="button"
+              onClick={onConfirmAll}
+              disabled={isProcessing}
+              className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+            >
+              {isConfirming ? 'Aceptando...' : 'Aceptar todos los datos'}
+            </button>
+            <button
+              type="button"
+              onClick={onRejectAll}
+              disabled={isProcessing}
+              className="flex-1 rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
+            >
+              {isRejecting ? 'Rechazando...' : 'Rechazar todos'}
+            </button>
+          </div>
+        </div>
+      )}
+
+      {enrichedCount === 0 && (
+        <div className="border-t border-gray-200 pt-4">
+          <button
+            type="button"
+            onClick={onClose}
+            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
+          >
+            Cerrar
+          </button>
+        </div>
+      )}
+    </div>
   );
 }
