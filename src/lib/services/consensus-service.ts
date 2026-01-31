@@ -365,7 +365,7 @@ export class ConsensusService {
       throw new Error('No AI providers available');
     }
 
-    const fields = ['website', 'emails', 'phones', 'description', 'industry'];
+    const fields = ['website', 'emails', 'phones', 'address', 'description', 'industry', 'companySize', 'socialProfiles'];
     const systemPrompt = getEnrichmentSystemPrompt(settings.matchMode as 'exact' | 'fuzzy' | 'broad');
     const userPrompt = getEnrichmentPrompt(client, fields);
 
