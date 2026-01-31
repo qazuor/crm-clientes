@@ -18,14 +18,16 @@ function cleanEmail(email: string | null | undefined): string | null {
 function cleanPhone(phone: string | null | undefined): string | null {
   if (!phone || typeof phone !== 'string') return null;
   const cleaned = phone.trim().replace(/\s+/g, ' ');
-  return cleaned.length > 0 ? cleaned : null;
+  if (cleaned.length === 0 || cleaned === 'N/D') return null;
+  return cleaned;
 }
 
 // Función para limpiar texto general
 function cleanText(text: string | null | undefined): string | null {
   if (!text || typeof text !== 'string') return null;
   const cleaned = text.trim();
-  return cleaned.length > 0 ? cleaned : null;
+  if (cleaned.length === 0 || cleaned === 'N/D') return null;
+  return cleaned;
 }
 
 // Función para extraer sitio web
@@ -38,7 +40,7 @@ function extractWebsite(cliente: any): string | null {
 
 // Función para determinar fuente
 function determineFuente(): FuenteCliente {
-  return FuenteCliente.MARKETING; // La mayoría vienen de marketing/investigación
+  return FuenteCliente.IMPORTADO; // Cargados desde archivo JSON
 }
 
 // Función para determinar estado inicial
@@ -52,7 +54,7 @@ function determinePrioridad(): PrioridadCliente {
 }
 
 async function loadJsonData() {
-  const jsonPath = '/home/qazuor/Desktop/csv clientes/json-output';
+  const jsonPath = path.resolve(__dirname, '..', 'data', 'json-clientes');
   const files = fs.readdirSync(jsonPath).filter(file => file.endsWith('.json') && file !== 'reporte-procesamiento.json');
   
   const allClients: any[] = [];
@@ -82,10 +84,15 @@ async function main() {
   console.log('🔄 Restaurando datos reales desde archivos JSON...\n');
 
   try {
-    // Limpiar datos existentes
+    // Limpiar datos existentes (orden: tablas hijas primero)
     console.log('🧹 Limpiando datos existentes...');
+    await prisma.mensaje.deleteMany({});
+    await prisma.notification.deleteMany({});
+    await prisma.clienteEnrichment.deleteMany({});
+    await prisma.websiteAnalysis.deleteMany({});
     await prisma.actividad.deleteMany({});
     await prisma.cliente.deleteMany({});
+    await prisma.plantillaContacto.deleteMany({});
     await prisma.session.deleteMany({});
     await prisma.account.deleteMany({});
     await prisma.user.deleteMany({});
@@ -94,7 +101,7 @@ async function main() {
     console.log('👥 Creando usuarios del sistema...');
     const hashedPassword = await bcrypt.hash('123456', 12);
     
-    const admin = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: 'admin@crm.com',
         name: 'Administrador',
@@ -103,7 +110,7 @@ async function main() {
       },
     });
 
-    const manager = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: 'manager@crm.com',
         name: 'Gerente de Ventas',
@@ -112,7 +119,7 @@ async function main() {
       },
     });
 
-    const agent1 = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: 'agent1@crm.com',
         name: 'Agente Comercial 1',
@@ -121,7 +128,7 @@ async function main() {
       },
     });
 
-    const agent2 = await prisma.user.create({
+    await prisma.user.create({
       data: {
         email: 'agent2@crm.com',
         name: 'Agente Comercial 2',
@@ -130,7 +137,6 @@ async function main() {
       },
     });
 
-    const agents = [agent1, agent2];
     console.log('✅ Usuarios creados');
 
     // Cargar datos desde JSON
@@ -149,8 +155,6 @@ async function main() {
       
       const clientesToCreate = batch.map((cliente, index) => {
         const globalIndex = i + index;
-        const agentIndex = globalIndex % agents.length;
-        const assignedAgent = agents[agentIndex];
 
         // Extraer datos del cliente
         const nombre = cleanText(cliente.nombre) || `Cliente ${globalIndex + 1}`;
@@ -194,8 +198,6 @@ async function main() {
           fuente: determineFuente(),
           estado: determineEstado(),
           prioridad: determinePrioridad(),
-          scoreConversion: Math.floor(Math.random() * 50) + 25, // Score entre 25-75
-          agentId: assignedAgent.id,
           fechaCreacion: new Date(),
           notas: `Cliente del rubro: ${industria}${cliente.rubro?.subRubro ? ` - ${cliente.rubro.subRubro}` : ''}`
         };
