@@ -54,6 +54,10 @@ export function EnrichmentModal({
 
   const enrichment = useEnrichment(singleClienteId);
 
+  // Derive effective website availability: original prop OR confirmed/found via enrichment
+  const effectiveHasWebsite =
+    clientHasWebsite || !!enrichment.latestEnrichment?.website;
+
   const [step, setStep] = useState<ModalStep>('form');
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
@@ -294,7 +298,7 @@ export function EnrichmentModal({
               <EnrichmentForm
                 onSubmitAI={handleSubmitAI}
                 onSubmitWeb={handleSubmitWeb}
-                clientHasWebsite={clientHasWebsite}
+                clientHasWebsite={effectiveHasWebsite}
                 defaultConfidenceThreshold={defaultThreshold}
                 availableProviders={enrichment.bulk.availableAIProviders}
                 isLoading={false}

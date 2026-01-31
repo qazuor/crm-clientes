@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useEnrichment } from '@/hooks/useEnrichment';
 import { EnrichmentSummary } from './EnrichmentSummary';
 import { WebsiteSummary } from './WebsiteSummary';
 import { EnrichmentHistory } from './EnrichmentHistory';
@@ -23,6 +24,11 @@ export function ClientEnrichmentSection({
   sitioWeb,
 }: ClientEnrichmentSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const enrichment = useEnrichment(clienteId);
+
+  // Derive effective website: prop (server) OR confirmed via enrichment
+  const effectiveSitioWeb =
+    sitioWeb || enrichment.latestEnrichment?.website || null;
 
   return (
     <>
@@ -53,7 +59,7 @@ export function ClientEnrichmentSection({
       </div>
 
       {/* Website Analysis Section */}
-      {sitioWeb && (
+      {effectiveSitioWeb && (
         <div id="web-analysis">
           <div className="flex items-center gap-2 mb-3">
             <ChartBarIcon className="w-5 h-5 text-gray-400" />
@@ -61,7 +67,7 @@ export function ClientEnrichmentSection({
               Analisis de Sitio Web
             </h3>
           </div>
-          <WebsiteSummary clienteId={clienteId} sitioWeb={sitioWeb} />
+          <WebsiteSummary clienteId={clienteId} sitioWeb={effectiveSitioWeb} />
         </div>
       )}
 
@@ -74,7 +80,7 @@ export function ClientEnrichmentSection({
         onClose={() => setModalOpen(false)}
         clienteIds={[clienteId]}
         clienteNames={[clienteNombre]}
-        clientHasWebsite={!!sitioWeb}
+        clientHasWebsite={!!effectiveSitioWeb}
       />
     </>
   );
