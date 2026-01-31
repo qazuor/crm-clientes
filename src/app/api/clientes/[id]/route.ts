@@ -14,7 +14,6 @@ import {
   registrarClienteEditado,
   registrarCambioEstado,
   registrarCambioPrioridad,
-  registrarCambioAgente
 } from '@/lib/actividades-automaticas'
 
 // GET /api/clientes/[id] - Obtener cliente por ID
@@ -27,13 +26,6 @@ export async function GET(
     const cliente = await prisma.cliente.findUnique({
       where: { id, deletedAt: null },
       include: {
-        agente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
         actividades: {
           where: { deletedAt: null },
           orderBy: { fecha: 'desc' },
@@ -87,15 +79,6 @@ export async function PUT(
     // Verify client exists
     const clienteExistente = await prisma.cliente.findUnique({
       where: { id },
-      include: {
-        agente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        }
-      }
     })
 
     if (!clienteExistente) {
@@ -132,29 +115,6 @@ export async function PUT(
       );
     }
 
-    // Detect agent change
-    if (data.agentId !== undefined && data.agentId !== clienteExistente.agentId) {
-      const agenteAnterior = clienteExistente.agente?.name || null;
-      let agenteNuevo: string | null = null;
-      if (data.agentId) {
-        const nuevoAgente = await prisma.user.findUnique({
-          where: { id: data.agentId },
-          select: { name: true, email: true }
-        });
-        agenteNuevo = nuevoAgente?.name || nuevoAgente?.email || null;
-      }
-
-      cambiosEspeciales.push(() =>
-        registrarCambioAgente(
-          id,
-          session.user.id,
-          clienteExistente.nombre,
-          agenteAnterior,
-          agenteNuevo
-        )
-      );
-    }
-
     // Detect other general changes - using typed approach
     const fieldsToCheck = [
       'nombre', 'email', 'telefono', 'whatsapp', 'instagram', 'facebook',
@@ -167,7 +127,7 @@ export async function PUT(
       const newValue = data[key as keyof typeof data];
 
       if (newValue !== undefined && newValue !== currentValue &&
-          !['estado', 'prioridad', 'agentId'].includes(key)) {
+          !['estado', 'prioridad'].includes(key)) {
         cambiosDetectados.push(key);
       }
     });
@@ -178,15 +138,6 @@ export async function PUT(
         ...data,
         fechaModific: new Date(),
       },
-      include: {
-        agente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        }
-      }
     })
 
     // Execute specific change logging

@@ -47,7 +47,7 @@ export default async function ClientesPage({
   const validSortFields = [
     'nombre', 'email', 'telefono', 'estado', 'prioridad', 'industria',
     'ciudad', 'provincia', 'fuente', 'fechaCreacion', 'fechaModific',
-    'ultimoContacto', 'scoreConversion', 'agente', 'ultimaIA', 'sitioWeb'
+    'ultimoContacto', 'ultimaIA', 'sitioWeb'
   ];
 
   // Parámetros de búsqueda con defaults
@@ -132,9 +132,7 @@ export default async function ClientesPage({
   // Obtener clientes con filtros y ordenado expandido
   const orderByClause: Record<string, unknown> = {};
   
-  if (sortField === 'agente') {
-    orderByClause.agente = { name: sortOrder };
-  } else if (sortField === 'ultimaIA') {
+  if (sortField === 'ultimaIA') {
     orderByClause.ultimaIA = sortOrder;
   } else {
     orderByClause[sortField] = sortOrder;
@@ -150,14 +148,6 @@ export default async function ClientesPage({
       orderBy: orderByClause,
       take: pageSize,
       skip: (page - 1) * pageSize,
-      include: {
-        agente: {
-          select: {
-            name: true,
-            email: true
-          }
-        }
-      }
     }),
     prisma.cliente.count({ where: whereClause }),
     prisma.cliente.findMany({
@@ -171,7 +161,7 @@ export default async function ClientesPage({
       distinct: ['ciudad']
     }),
     prisma.cliente.count(),
-    prisma.cliente.count({ where: { estado: { not: 'PERDIDO' } } }),
+    prisma.cliente.count({ where: { estado: { not: 'FINALIZADO' } } }),
     prisma.cliente.count({ where: { fechaCreacion: { gte: thirtyDaysAgo } } })
   ]);
 
@@ -258,6 +248,7 @@ export default async function ClientesPage({
           <div className="p-6">
             <TablaClientes
               clientes={clientes}
+              totalClientes={totalClientes}
               params={params as Record<string, string>}
               sortField={sortField}
               sortOrder={sortOrder}

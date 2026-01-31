@@ -29,32 +29,11 @@ export default async function EditarClientePage({ params }: EditarClienteProps) 
   // Obtener cliente específico
   const cliente = await prisma.cliente.findUnique({
     where: { id },
-    include: {
-      agente: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      }
-    }
   });
 
   if (!cliente) {
     notFound();
   }
-
-  // Obtener todos los usuarios para el selector de agente
-  const usuarios = await prisma.user.findMany({
-    select: {
-      id: true,
-      name: true,
-      email: true
-    },
-    orderBy: {
-      name: 'asc'
-    }
-  });
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -112,7 +91,7 @@ export default async function EditarClientePage({ params }: EditarClienteProps) 
         </div>
 
         {/* Formulario */}
-        <EditarClienteForm cliente={cliente} usuarios={usuarios} />
+        <EditarClienteForm cliente={cliente} />
       </main>
     </div>
   );

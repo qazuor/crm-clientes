@@ -197,11 +197,9 @@ export default async function NuevoClientePage() {
                     className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="MANUAL">Manual</option>
-                    <option value="WEBSITE">Sitio Web</option>
                     <option value="REFERIDO">Referido</option>
-                    <option value="LINKEDIN">LinkedIn</option>
-                    <option value="EVENTO">Evento</option>
-                    <option value="LLAMADA_FRIA">Llamada Fría</option>
+                    <option value="CONTACTO_CLIENTE">Contacto del cliente</option>
+                    <option value="IMPORTADO">Importado</option>
                   </select>
                 </div>
 
@@ -215,9 +213,11 @@ export default async function NuevoClientePage() {
                     className="mt-1 block w-full border border-gray-300 rounded-lg px-3 py-2 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                   >
                     <option value="NUEVO">Nuevo</option>
-                    <option value="CONTACTADO">Contactado</option>
-                    <option value="CALIFICADO">Calificado</option>
-                    <option value="PERDIDO">Perdido</option>
+                    <option value="PRIMER_CONTACTO">Primer contacto</option>
+                    <option value="EN_TRATATIVAS">En tratativas</option>
+                    <option value="EN_DESARROLLO">En desarrollo</option>
+                    <option value="FINALIZADO">Finalizado</option>
+                    <option value="RECONTACTO">Recontacto</option>
                   </select>
                 </div>
 

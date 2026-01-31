@@ -140,9 +140,11 @@ export function FiltrosAvanzados({
                 >
                   <option value="">Todos</option>
                   <option value="NUEVO">NUEVO</option>
-                  <option value="CONTACTADO">CONTACTADO</option>
-                  <option value="CALIFICADO">CALIFICADO</option>
-                  <option value="PERDIDO">PERDIDO</option>
+                  <option value="PRIMER_CONTACTO">PRIMER CONTACTO</option>
+                  <option value="EN_TRATATIVAS">EN TRATATIVAS</option>
+                  <option value="EN_DESARROLLO">EN DESARROLLO</option>
+                  <option value="FINALIZADO">FINALIZADO</option>
+                  <option value="RECONTACTO">RECONTACTO</option>
                 </select>
               </div>
 
@@ -307,7 +309,6 @@ export function FiltrosAvanzados({
                   <option value="estado">Estado</option>
                   <option value="industria">Industria</option>
                   <option value="ultimaIA">Última IA</option>
-                  <option value="agente">Agente</option>
                 </select>
               </div>
               

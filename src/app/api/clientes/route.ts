@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { registrarClienteCreado } from '@/lib/actividades-automaticas'
 import { logger } from '@/lib/logger'
-import { EstadoCliente, PrioridadCliente, FuenteCliente, Prisma } from '@prisma/client'
+import { EstadoCliente, PrioridadCliente, FuenteCliente, type Prisma } from '@prisma/client'
 import {
   ClienteFiltersSchema,
   CreateClienteDTOSchema,
@@ -26,7 +26,6 @@ export async function GET(request: NextRequest) {
       estado: searchParams.get('estado') || undefined,
       prioridad: searchParams.get('prioridad') || undefined,
       fuente: searchParams.get('fuente') || undefined,
-      agentId: searchParams.get('agentId') || undefined,
       industria: searchParams.get('industria') || undefined,
       limit: searchParams.get('limit') || '10',
       offset: searchParams.get('offset') || '0',
@@ -57,20 +56,12 @@ export async function GET(request: NextRequest) {
     if (filters.estado) where.estado = filters.estado as EstadoCliente
     if (filters.prioridad) where.prioridad = filters.prioridad as PrioridadCliente
     if (filters.fuente) where.fuente = filters.fuente as FuenteCliente
-    if (filters.agentId) where.agentId = filters.agentId
     if (filters.industria) where.industria = filters.industria
 
     // Fetch clients
     const clientes = await prisma.cliente.findMany({
       where,
       include: {
-        agente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        },
         actividades: {
           where: { deletedAt: null },
           take: 3,
@@ -133,15 +124,6 @@ export async function POST(request: NextRequest) {
         fechaCreacion: new Date(),
         fechaModific: new Date(),
       },
-      include: {
-        agente: {
-          select: {
-            id: true,
-            name: true,
-            email: true,
-          }
-        }
-      }
     })
 
     // Registrar actividad automática

@@ -15,7 +15,6 @@ const COLUMNAS_DISPONIBLES = [
   { key: 'estado', label: 'Estado' },
   { key: 'prioridad', label: 'Prioridad' },
   { key: 'industria', label: 'Industria' },
-  { key: 'agente', label: 'Agente' },
   { key: 'ultimoContacto', label: 'Último Contacto' },
   { key: 'ultimaIA', label: 'Última IA' },
   { key: 'fechaCreacion', label: 'Fecha Creación' },
