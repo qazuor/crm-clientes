@@ -33,7 +33,7 @@ npx prisma generate      # Regenerate Prisma client after schema changes
 ### Tech Stack
 - **Framework**: Next.js 16 with App Router, React 19
 - **Language**: TypeScript (strict mode)
-- **Database**: SQLite (dev) / PostgreSQL (prod via Vercel)
+- **Database**: PostgreSQL (dev via Docker on port 5437, prod via Vercel)
 - **ORM**: Prisma 5.22
 - **Auth**: NextAuth v5 (beta) with credentials provider, JWT sessions
 - **Styling**: TailwindCSS 4 with Headless UI and Radix primitives
@@ -92,7 +92,8 @@ Quota limits: ~33 screenshots/day (1000/month free tier). Screenshots stored in 
 
 Required in `.env`:
 ```
-DATABASE_URL="file:./dev.db"
+DATABASE_URL="postgresql://user:password@localhost:5437/crm_clientes"
+DIRECT_URL="postgresql://user:password@localhost:5437/crm_clientes"
 NEXTAUTH_SECRET="your-secret"
 NEXTAUTH_URL="http://localhost:4500"
 OPENAI_API_KEY="sk-..."  # For AI features

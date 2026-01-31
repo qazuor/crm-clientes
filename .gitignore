@@ -57,6 +57,9 @@ quotas.json
 # Logs
 /logs/
 
+# Client seed data (JSON files)
+/data/
+
 # Planning artifacts
 .plan/
 /etc/
