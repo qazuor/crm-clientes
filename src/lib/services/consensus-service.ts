@@ -12,7 +12,7 @@ import {
   getConsensusPrompt,
   type ClientContext,
 } from './enrichment-prompts';
-import type { AIProvider, ScoredValue } from '@/types/enrichment';
+import type { AIProvider } from '@/types/enrichment';
 
 export interface EnrichmentFieldResult<T> {
   value: T | null;

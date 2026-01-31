@@ -49,7 +49,7 @@ export class EnrichmentPostProcessor {
     const enhancedResult: EnrichmentResult = JSON.parse(JSON.stringify(aiResult));
 
     // Get settings to check if external APIs are enabled
-    const settings = await SettingsService.getEnrichmentSettings();
+    await SettingsService.getEnrichmentSettings();
 
     // 1. Verify emails with Hunter.io
     if (options.verifyEmails !== false && enhancedResult.emails?.value) {
@@ -398,7 +398,7 @@ export class EnrichmentPostProcessor {
             errors.push(`Email ${emailData.email}: ${result.error}`);
           }
         }
-      } catch (err) {
+      } catch {
         results.push({
           ...emailData,
           verified: false,

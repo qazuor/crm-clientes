@@ -3,14 +3,12 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button'
-import LogoutButton from '@/components/LogoutButton';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { 
   UsersIcon, 
   ChartBarIcon, 
   PhoneIcon,
   EnvelopeIcon,
-  BuildingOffice2Icon,
   PlusIcon
 } from '@heroicons/react/24/outline'
 
@@ -27,7 +25,7 @@ export default async function Home() {
     prisma.cliente.count({
       where: {
         estado: {
-          not: 'PERDIDO'
+          not: 'FINALIZADO'
         }
       }
     }),
@@ -187,7 +185,6 @@ export default async function Home() {
                       'CONTACTO_AUTOMATICO': 'Contacto automático',
                       'CAMBIO_ESTADO': 'Cambio de estado',
                       'CAMBIO_PRIORIDAD': 'Cambio de prioridad',
-                      'CAMBIO_AGENTE': 'Cambio de agente'
                     };
 
                     const tipoColors: { [key: string]: string } = {
@@ -206,7 +203,6 @@ export default async function Home() {
                       'CONTACTO_AUTOMATICO': 'bg-teal-500',
                       'CAMBIO_ESTADO': 'bg-violet-500',
                       'CAMBIO_PRIORIDAD': 'bg-rose-500',
-                      'CAMBIO_AGENTE': 'bg-lime-500'
                     };
 
                     return (

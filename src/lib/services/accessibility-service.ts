@@ -183,9 +183,6 @@ export class AccessibilityService {
 
     // 6. Check heading hierarchy
     const h1Count = (html.match(/<h1[^>]*>/gi) || []).length;
-    const h2Count = (html.match(/<h2[^>]*>/gi) || []).length;
-    const h3Count = (html.match(/<h3[^>]*>/gi) || []).length;
-
     if (h1Count === 0) {
       issues.push({
         severity: 'serious',

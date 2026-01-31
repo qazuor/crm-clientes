@@ -1,4 +1,3 @@
-import { NextRequest } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -9,7 +8,7 @@ import {
 } from '@/lib/api-response'
 
 // GET /api/stats - Obtener estadísticas del dashboard
-export async function GET(request: NextRequest) {
+export async function GET() {
   try {
     const session = await auth()
 
@@ -34,7 +33,6 @@ export async function GET(request: NextRequest) {
       llamadasHoy,
       emailsHoy,
       clientesActivos,
-      scorePromedio,
       actividadesRecientes
     ] = await Promise.all([
       // Total clients (excluding soft-deleted)
@@ -97,12 +95,6 @@ export async function GET(request: NextRequest) {
         }
       }),
 
-      // Average conversion score
-      prisma.cliente.aggregate({
-        where: { deletedAt: null },
-        _avg: { scoreConversion: true }
-      }),
-
       // Recent activities
       prisma.actividad.findMany({
         where: { deletedAt: null },
@@ -144,7 +136,6 @@ export async function GET(request: NextRequest) {
         actividadesHoy,
         llamadasHoy,
         emailsHoy,
-        scorePromedio: Math.round(scorePromedio._avg.scoreConversion || 0)
       },
       distribucion: {
         porEstado,

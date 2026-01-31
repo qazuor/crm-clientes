@@ -31,17 +31,6 @@ const TIPOS_ACTIVIDAD = [
   { value: 'SEGUIMIENTO', label: 'Seguimiento', icon: ClockIcon },
 ];
 
-// Actividades automáticas del sistema (no disponibles para selección manual)
-const ACTIVIDADES_AUTOMATICAS = {
-  'CLIENTE_CREADO': 'Cliente creado',
-  'CLIENTE_EDITADO': 'Cliente editado',
-  'CLIENTE_ELIMINADO': 'Cliente eliminado',
-  'IA_ENRIQUECIMIENTO': 'Enriquecimiento con IA',
-  'CONTACTO_AUTOMATICO': 'Contacto automático',
-  'CAMBIO_ESTADO': 'Cambio de estado',
-  'CAMBIO_PRIORIDAD': 'Cambio de prioridad',
-  'CAMBIO_AGENTE': 'Cambio de agente'
-};
 
 export function NuevaActividadModal({ 
   clienteId, 

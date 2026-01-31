@@ -231,7 +231,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
       }
 
-      const elapsed = Date.now() - startTime;
       const allErrors = [...((result as EnrichmentResult).errors || []), ...externalErrors.map(e => ({ provider: 'external' as const, error: e }))];
 
       return NextResponse.json({
@@ -258,8 +257,6 @@ export async function POST(request: NextRequest, context: RouteContext) {
         id,
         cliente.sitioWeb
       );
-
-      const elapsed = Date.now() - startTime;
 
       // Log activity
       if (session.user.id) {

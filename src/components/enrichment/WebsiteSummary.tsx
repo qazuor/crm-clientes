@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import Image from 'next/image';
 import { useEnrichment } from '@/hooks/useEnrichment';
 
 interface WebsiteSummaryProps {
@@ -102,9 +103,12 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
             {wa.screenshotDesktop && (
               <div className="flex-1">
                 <p className="mb-1 text-xs text-gray-500">Desktop</p>
-                <img
+                <Image
                   src={wa.screenshotDesktop}
                   alt="Desktop screenshot"
+                  width={800}
+                  height={600}
+                  unoptimized
                   className="w-full rounded border border-gray-200"
                 />
               </div>
@@ -112,9 +116,12 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
             {wa.screenshotMobile && (
               <div className="w-24">
                 <p className="mb-1 text-xs text-gray-500">Mobile</p>
-                <img
+                <Image
                   src={wa.screenshotMobile}
                   alt="Mobile screenshot"
+                  width={320}
+                  height={568}
+                  unoptimized
                   className="w-full rounded border border-gray-200"
                 />
               </div>

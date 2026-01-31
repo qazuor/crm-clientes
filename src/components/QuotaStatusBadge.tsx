@@ -1,6 +1,6 @@
 'use client';
 
-import { useQuotaStatus, QuotaInfo } from '@/hooks/useQuotas';
+import { useQuotaStatus } from '@/hooks/useQuotas';
 import { ExclamationTriangleIcon, CheckCircleIcon } from '@heroicons/react/24/outline';
 
 interface QuotaStatusBadgeProps {

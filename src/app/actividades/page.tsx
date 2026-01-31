@@ -3,7 +3,7 @@ import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
-import { ActividadCard } from '@/components/ActividadCard';
+
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { 
   PhoneIcon,
@@ -128,7 +128,6 @@ export default async function ActividadesPage({ searchParams }: ActividadesPageP
       case 'CONTACTO_AUTOMATICO': return PhoneIcon;
       case 'CAMBIO_ESTADO': return ClipboardDocumentListIcon;
       case 'CAMBIO_PRIORIDAD': return ClipboardDocumentListIcon;
-      case 'CAMBIO_AGENTE': return UserGroupIcon;
       default: return ChatBubbleLeftEllipsisIcon;
     }
   };
@@ -149,7 +148,6 @@ export default async function ActividadesPage({ searchParams }: ActividadesPageP
     'CONTACTO_AUTOMATICO': 'Contacto automático',
     'CAMBIO_ESTADO': 'Cambio de estado',
     'CAMBIO_PRIORIDAD': 'Cambio de prioridad',
-    'CAMBIO_AGENTE': 'Cambio de agente'
   };
 
   return (

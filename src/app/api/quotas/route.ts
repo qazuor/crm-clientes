@@ -1,5 +1,5 @@
 import { auth } from '@/lib/auth'
-import { getAllQuotasInfo, getAllExtendedQuotasInfo, resetAllQuotas } from '@/lib/quota-manager'
+import { getAllExtendedQuotasInfo, resetAllQuotas } from '@/lib/quota-manager'
 import { logger } from '@/lib/logger'
 import { hasPermission } from '@/lib/rbac'
 import {

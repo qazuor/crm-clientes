@@ -12,7 +12,6 @@ import {
   CalendarIcon,
   ClipboardDocumentListIcon,
   GlobeAltIcon,
-  ChatBubbleLeftIcon,
   BuildingOfficeIcon,
   ClockIcon,
   PlusIcon,

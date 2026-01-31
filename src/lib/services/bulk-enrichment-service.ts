@@ -6,7 +6,6 @@
 import { prisma } from '@/lib/prisma';
 import { ConsensusService } from './consensus-service';
 import { WebsiteAnalysisService } from './website-analysis-service';
-import { SettingsService } from './settings-service';
 import { logger } from '@/lib/logger';
 import type { ClientContext } from './enrichment-prompts';
 import type { AIProvider, FieldReviewStatus, ReviewableField } from '@/types/enrichment';

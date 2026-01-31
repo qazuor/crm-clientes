@@ -69,7 +69,7 @@ export class SeoAnalysisService {
       }
 
       const html = await response.text();
-      return this.parseHtml(html, url);
+      return this.parseHtml(html);
     } catch (error) {
       logger.warn('SEO analysis failed', { url, error: error instanceof Error ? error.message : String(error) });
       return {
@@ -82,7 +82,7 @@ export class SeoAnalysisService {
   /**
    * Parse HTML and extract SEO data
    */
-  private static parseHtml(html: string, baseUrl: string): SeoAnalysisResult {
+  private static parseHtml(html: string): SeoAnalysisResult {
     const result: SeoAnalysisResult = {
       success: true,
     };

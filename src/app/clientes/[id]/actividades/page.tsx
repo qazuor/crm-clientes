@@ -2,12 +2,10 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
-import { Button } from '@/components/ui/Button';
 import { NuevaActividadModal } from '@/components/NuevaActividadModal';
 import { ActividadCard } from '@/components/ActividadCard';
 import { 
   ArrowLeftIcon,
-  PlusIcon,
   PhoneIcon,
   EnvelopeIcon,
   UserGroupIcon,

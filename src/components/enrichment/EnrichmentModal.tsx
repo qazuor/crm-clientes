@@ -7,7 +7,7 @@ import { useEnrichment } from '@/hooks/useEnrichment';
 import { EnrichmentForm } from './EnrichmentForm';
 import { EnrichmentReview, type ReviewField } from './EnrichmentReview';
 import { EnrichmentProgress } from './shared/EnrichmentProgress';
-import type { AIProvider, FieldReviewStatus, ClienteEnrichmentData } from '@/types/enrichment';
+import type { AIProvider, FieldReviewStatus } from '@/types/enrichment';
 
 const FIELD_LABELS: Record<string, string> = {
   website: 'Sitio Web',

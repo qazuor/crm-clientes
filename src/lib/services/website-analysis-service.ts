@@ -8,7 +8,7 @@ import { ScreenshotService } from '@/lib/screenshot-service';
 import { PageSpeedService } from '@/lib/pagespeed-service';
 import { UrlVerificationService } from './url-verification-service';
 import { SettingsService } from './settings-service';
-import { SeoAnalysisService, SeoAnalysisResult } from './seo-analysis-service';
+import { SeoAnalysisService } from './seo-analysis-service';
 import { SecurityHeadersService, SecurityHeadersResult } from './security-headers-service';
 import { TechStackService, TechStackResult } from './tech-stack-service';
 import { CrawlabilityService, CrawlabilityResult } from './crawlability-service';

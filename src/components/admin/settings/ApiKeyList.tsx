@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { CheckCircleIcon, XCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
 import { Button } from '@/components/ui/Button';
 import type { ApiKeyResponse, ApiKeyProvider, AIProvider } from '@/types/enrichment';
@@ -31,7 +31,10 @@ function ProviderRow({
   const [localSaving, setLocalSaving] = useState(false);
 
   const isAI = info.category === 'ai';
-  const availableModels = isAI ? AI_PROVIDER_MODELS[provider as AIProvider] : [];
+  const availableModels = useMemo(
+    () => (isAI ? AI_PROVIDER_MODELS[provider as AIProvider] : []),
+    [isAI, provider]
+  );
 
   // Initialize model from existing key or default
   useEffect(() => {
