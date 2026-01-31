@@ -3,8 +3,9 @@
 import { useState, FormEvent } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { CheckIcon, XMarkIcon } from '@heroicons/react/24/outline';
+import { CheckIcon, XMarkIcon, SparklesIcon } from '@heroicons/react/24/outline';
 import { UltimaIADisplay } from '@/components/UltimaIADisplay';
+import { EnrichmentModal } from '@/components/enrichment/EnrichmentModal';
 
 interface Cliente {
   id: string;
@@ -27,32 +28,24 @@ interface Cliente {
   fuente: string;
   estado: string;
   prioridad: string;
-  scoreConversion: number | null;
-  agentId: string | null;
   notas: string | null;
   ultimaIA?: Date | null;
 }
 
-interface Usuario {
-  id: string;
-  name: string | null;
-  email: string;
-}
-
 interface EditarClienteFormProps {
   cliente: Cliente;
-  usuarios: Usuario[];
 }
 
-const ESTADOS = ['NUEVO', 'CONTACTADO', 'CALIFICADO', 'PERDIDO'];
+const ESTADOS = ['NUEVO', 'PRIMER_CONTACTO', 'EN_TRATATIVAS', 'EN_DESARROLLO', 'FINALIZADO', 'RECONTACTO'];
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
-const FUENTES = ['MANUAL', 'WEBSITE', 'REFERIDO', 'LINKEDIN', 'EVENTO', 'LLAMADA_FRIA', 'IMPORTADO'];
+const FUENTES = ['IMPORTADO', 'MANUAL', 'REFERIDO', 'CONTACTO_CLIENTE'];
 const INDUSTRIAS = ['GASTRONOMIA', 'SALUD', 'INDUMENTARIA', 'BELLEZA', 'DEPORTES', 'COMERCIO', 'CONSTRUCCION', 'SERVICIOS', 'INDUSTRIA', 'TURISMO', 'CULTURA', 'OTROS'];
 
-export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFormProps) {
+export default function EditarClienteForm({ cliente }: EditarClienteFormProps) {
   const router = useRouter();
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
+  const [enrichModalOpen, setEnrichModalOpen] = useState(false);
   
   const [formData, setFormData] = useState({
     nombre: cliente.nombre || '',
@@ -74,8 +67,6 @@ export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFo
     fuente: cliente.fuente || 'MANUAL',
     estado: cliente.estado || 'NUEVO',
     prioridad: cliente.prioridad || 'MEDIA',
-    scoreConversion: cliente.scoreConversion?.toString() || '0',
-    agentId: cliente.agentId || '',
     notas: cliente.notas || ''
   });
 
@@ -92,8 +83,6 @@ export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFo
         },
         body: JSON.stringify({
           ...formData,
-          scoreConversion: parseFloat(formData.scoreConversion) || 0,
-          agentId: formData.agentId || null,
           tieneSSL: formData.tieneSSL === '' ? null : formData.tieneSSL === 'true',
           esResponsive: formData.esResponsive === '' ? null : formData.esResponsive === 'true',
         }),
@@ -467,42 +456,6 @@ export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFo
               </select>
             </div>
 
-            <div>
-              <label htmlFor="scoreConversion" className="block text-sm font-medium text-gray-700">
-                Score de Conversión (0-1)
-              </label>
-              <input
-                type="number"
-                id="scoreConversion"
-                name="scoreConversion"
-                min="0"
-                max="1"
-                step="0.1"
-                value={formData.scoreConversion}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-              />
-            </div>
-
-            <div>
-              <label htmlFor="agentId" className="block text-sm font-medium text-gray-700">
-                Agente Asignado
-              </label>
-              <select
-                id="agentId"
-                name="agentId"
-                value={formData.agentId}
-                onChange={handleChange}
-                className="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:outline-none focus:ring-blue-500 focus:border-blue-500 text-gray-900 bg-white"
-              >
-                <option value="">Sin asignar</option>
-                {usuarios.map((usuario) => (
-                  <option key={usuario.id} value={usuario.id}>
-                    {usuario.name || usuario.email}
-                  </option>
-                ))}
-              </select>
-            </div>
           </div>
         </div>
 
@@ -532,19 +485,27 @@ export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFo
           <div className="text-sm text-gray-500">
             <UltimaIADisplay fecha={cliente.ultimaIA} size="sm" />
           </div>
+          <button
+            type="button"
+            onClick={() => setEnrichModalOpen(true)}
+            className="inline-flex items-center rounded bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
+          >
+            <SparklesIcon className="h-3.5 w-3.5 mr-1" />
+            Enriquecer
+          </button>
         </div>
         <div className="flex space-x-3">
-          <Button 
-            type="button" 
-            variant="outline" 
+          <Button
+            type="button"
+            variant="outline"
             onClick={() => router.back()}
             disabled={isLoading}
           >
             <XMarkIcon className="h-4 w-4 mr-2" />
             Cancelar
           </Button>
-          <Button 
-            type="submit" 
+          <Button
+            type="submit"
             disabled={isLoading}
           >
             <CheckIcon className="h-4 w-4 mr-2" />
@@ -552,6 +513,14 @@ export default function EditarClienteForm({ cliente, usuarios }: EditarClienteFo
           </Button>
         </div>
       </div>
+
+      <EnrichmentModal
+        isOpen={enrichModalOpen}
+        onClose={() => setEnrichModalOpen(false)}
+        clienteIds={[cliente.id]}
+        clienteNames={[cliente.nombre]}
+        clientHasWebsite={!!cliente.sitioWeb}
+      />
     </form>
   );
 }

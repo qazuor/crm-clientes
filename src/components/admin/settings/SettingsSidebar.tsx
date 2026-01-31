@@ -6,7 +6,7 @@ import {
   KeyIcon,
   AdjustmentsHorizontalIcon,
   ChartBarIcon,
-  SparklesIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
 
 const menuItems = [
@@ -29,10 +29,10 @@ const menuItems = [
     description: 'Ver uso y límites de APIs',
   },
   {
-    href: '/admin/settings/bulk-enrich',
-    label: 'Enriquecimiento en Bloque',
-    icon: SparklesIcon,
-    description: 'Enriquecer múltiples clientes a la vez',
+    href: '/admin/settings/plantillas',
+    label: 'Plantillas de Contacto',
+    icon: EnvelopeIcon,
+    description: 'Gestionar plantillas de email y WhatsApp',
   },
 ];
 

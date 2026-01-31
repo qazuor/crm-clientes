@@ -10,23 +10,19 @@ import {
   EnvelopeIcon,
   MapPinIcon,
   CalendarIcon,
-  UserIcon,
-  StarIcon,
   ClipboardDocumentListIcon,
   GlobeAltIcon,
   ChatBubbleLeftIcon,
   BuildingOfficeIcon,
   ClockIcon,
-  SparklesIcon,
-  ChartBarIcon,
   PlusIcon,
 } from '@heroicons/react/24/outline';
-import { UltimaIADisplay } from '@/components/UltimaIADisplay';
-import { WebsiteAnalysisPanel } from '@/components/enrichment/WebsiteAnalysisPanel';
-import { ClientInfoSearch } from '@/components/enrichment/ClientInfoSearch';
 import { CopyButton } from '@/components/ui/CopyButton';
+import { ClientEnrichmentSection } from '@/components/enrichment/ClientEnrichmentSection';
 import { notFound } from 'next/navigation';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import { ContactButtons } from '@/components/ContactButtons';
+import { MensajeHistory } from '@/components/MensajeHistory';
 
 interface ClienteDetallesProps {
   params: {
@@ -87,13 +83,6 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
   const cliente = await prisma.cliente.findUnique({
     where: { id },
     include: {
-      agente: {
-        select: {
-          id: true,
-          name: true,
-          email: true
-        }
-      },
       actividades: {
         orderBy: {
           fecha: 'desc'
@@ -122,9 +111,11 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
 
   const estadoConfig = {
     'NUEVO': { bg: 'bg-blue-100', text: 'text-blue-700', dot: 'bg-blue-500' },
-    'CONTACTADO': { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500' },
-    'CALIFICADO': { bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' },
-    'PERDIDO': { bg: 'bg-red-100', text: 'text-red-700', dot: 'bg-red-500' }
+    'PRIMER_CONTACTO': { bg: 'bg-yellow-100', text: 'text-yellow-700', dot: 'bg-yellow-500' },
+    'EN_TRATATIVAS': { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' },
+    'EN_DESARROLLO': { bg: 'bg-green-100', text: 'text-green-700', dot: 'bg-green-500' },
+    'FINALIZADO': { bg: 'bg-gray-100', text: 'text-gray-700', dot: 'bg-gray-500' },
+    'RECONTACTO': { bg: 'bg-purple-100', text: 'text-purple-700', dot: 'bg-purple-500' },
   };
 
   const prioridadConfig = {
@@ -156,6 +147,25 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
             Volver a clientes
           </Link>
           <div className="flex items-center gap-2">
+            <ContactButtons
+              cliente={{
+                id: cliente.id,
+                nombre: cliente.nombre,
+                email: cliente.email,
+                telefono: cliente.telefono,
+                whatsapp: cliente.whatsapp,
+                direccion: cliente.direccion,
+                ciudad: cliente.ciudad,
+                provincia: cliente.provincia,
+                codigoPostal: cliente.codigoPostal,
+                industria: cliente.industria,
+                sitioWeb: cliente.sitioWeb,
+                instagram: cliente.instagram,
+                facebook: cliente.facebook,
+                linkedin: cliente.linkedin,
+                twitter: cliente.twitter,
+              }}
+            />
             <Link href={`/clientes/${cliente.id}/actividades/nueva`}>
               <Button variant="outline" size="sm">
                 <PlusIcon className="h-4 w-4 mr-1" />
@@ -213,13 +223,6 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
 
               {/* Quick Stats */}
               <div className="flex flex-wrap gap-3 sm:gap-4">
-                {/* Score */}
-                <div className="text-center px-4 py-2 bg-gray-50 rounded-lg">
-                  <div className="text-2xl font-bold text-gray-900">
-                    {((cliente.scoreConversion || 0) * 100).toFixed(0)}%
-                  </div>
-                  <div className="text-xs text-gray-500">Score</div>
-                </div>
                 {/* Activities Count */}
                 <div className="text-center px-4 py-2 bg-gray-50 rounded-lg">
                   <div className="text-2xl font-bold text-gray-900">
@@ -422,21 +425,10 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
               </div>
             )}
 
-            {/* Agent & Dates Card */}
+            {/* Dates Card */}
             <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-4">
               <h3 className="text-sm font-semibold text-gray-900 mb-3">Informacion del Registro</h3>
               <div className="space-y-3">
-                <div className="flex items-center gap-3">
-                  <div className="flex-shrink-0 w-8 h-8 bg-indigo-100 rounded-lg flex items-center justify-center">
-                    <UserIcon className="w-4 h-4 text-indigo-600" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium text-gray-900">
-                      {cliente.agente?.name || cliente.agente?.email || 'Sin asignar'}
-                    </p>
-                    <p className="text-xs text-gray-500">Agente asignado</p>
-                  </div>
-                </div>
                 <div className="flex items-center gap-3">
                   <div className="flex-shrink-0 w-8 h-8 bg-gray-100 rounded-lg flex items-center justify-center">
                     <CalendarIcon className="w-4 h-4 text-gray-600" />
@@ -539,42 +531,25 @@ export default async function ClienteDetallesPage({ params }: ClienteDetallesPro
               </div>
             </div>
 
-            {/* AI Enrichment Section */}
-            <div className="bg-white rounded-xl shadow-sm border border-gray-200" id="enrichment">
-              <div className="px-4 py-3 border-b border-gray-200 flex items-center justify-between">
+            {/* Historial de Mensajes */}
+            <div className="bg-white rounded-xl shadow-sm border border-gray-200">
+              <div className="px-4 py-3 border-b border-gray-200">
                 <h3 className="text-sm font-semibold text-gray-900 flex items-center gap-2">
-                  <SparklesIcon className="w-4 h-4 text-purple-500" />
-                  Enriquecimiento con IA
+                  <EnvelopeIcon className="w-4 h-4 text-gray-400" />
+                  Historial de Mensajes
                 </h3>
-                <UltimaIADisplay fecha={cliente.ultimaIA} size="sm" showIcon={false} />
               </div>
               <div className="p-4">
-                <ClientInfoSearch
-                  cliente={{
-                    id: cliente.id,
-                    nombre: cliente.nombre,
-                    email: cliente.email || undefined,
-                    telefono: cliente.telefono || undefined,
-                    direccion: cliente.direccion || undefined,
-                    ciudad: cliente.ciudad || undefined,
-                    industria: cliente.industria || undefined,
-                    sitioWeb: cliente.sitioWeb || undefined
-                  }}
-                />
+                <MensajeHistory clienteId={cliente.id} />
               </div>
             </div>
 
-            {/* Website Analysis Section */}
-            <div id="web-analysis">
-              <div className="flex items-center gap-2 mb-3">
-                <ChartBarIcon className="w-5 h-5 text-gray-400" />
-                <h3 className="text-sm font-semibold text-gray-900">Analisis de Sitio Web</h3>
-              </div>
-              <WebsiteAnalysisPanel
-                clienteId={cliente.id}
-                websiteUrl={cliente.sitioWeb || undefined}
-              />
-            </div>
+            {/* Enrichment Section (AI + Web + History) */}
+            <ClientEnrichmentSection
+              clienteId={cliente.id}
+              clienteNombre={cliente.nombre}
+              sitioWeb={cliente.sitioWeb}
+            />
           </div>
         </div>
       </main>

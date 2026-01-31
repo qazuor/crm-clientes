@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/Button';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
 import { UltimaIADisplay } from '@/components/UltimaIADisplay';
 import { ColumnasSelect } from '@/components/ColumnasSelect';
-import { EnrichmentModal } from '@/components/EnrichmentModal';
+import { EnrichmentModal } from '@/components/enrichment/EnrichmentModal';
 import {
   EyeIcon,
   PencilIcon,
@@ -16,8 +16,11 @@ import {
   SparklesIcon,
   GlobeAltIcon,
   MagnifyingGlassIcon,
-  TrashIcon
+  TrashIcon,
+  EnvelopeIcon,
 } from '@heroicons/react/24/outline';
+import { ContactModal } from '@/components/ContactModal';
+import { BulkContactModal } from '@/components/BulkContactModal';
 
 interface Cliente {
   id: string;
@@ -39,10 +42,6 @@ interface Cliente {
   ultimoContacto?: Date | null;
   fechaCreacion: Date;
   fechaModific?: Date;
-  agente: {
-    name: string | null;
-    email: string;
-  } | null;
 }
 
 interface TablaClientesProps {
@@ -54,11 +53,10 @@ interface TablaClientesProps {
   columnasIniciales?: string;
 }
 
-const COLUMNAS_DEFAULT = ['nombre', 'contacto', 'estado', 'industria', 'agente', 'ultimaIA', 'acciones'];
+const COLUMNAS_DEFAULT = ['nombre', 'contacto', 'estado', 'industria', 'ultimaIA', 'acciones'];
 
 const ESTADOS = [
-  'NUEVO', 'CONTACTADO', 'CALIFICADO', 'INTERESADO',
-  'PROPUESTA_ENVIADA', 'NEGOCIACION', 'CONVERTIDO', 'PERDIDO', 'INACTIVO'
+  'NUEVO', 'PRIMER_CONTACTO', 'EN_TRATATIVAS', 'EN_DESARROLLO', 'FINALIZADO', 'RECONTACTO'
 ];
 
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
@@ -69,12 +67,16 @@ function getBadgeColor(estado: string) {
   switch (estado) {
     case 'NUEVO':
       return 'bg-blue-100 text-blue-800';
-    case 'CONTACTADO':
+    case 'PRIMER_CONTACTO':
       return 'bg-yellow-100 text-yellow-800';
-    case 'CALIFICADO':
+    case 'EN_TRATATIVAS':
+      return 'bg-orange-100 text-orange-800';
+    case 'EN_DESARROLLO':
       return 'bg-green-100 text-green-800';
-    case 'PERDIDO':
-      return 'bg-red-100 text-red-800';
+    case 'FINALIZADO':
+      return 'bg-gray-100 text-gray-800';
+    case 'RECONTACTO':
+      return 'bg-purple-100 text-purple-800';
     default:
       return 'bg-gray-100 text-gray-800';
   }
@@ -100,9 +102,16 @@ export function TablaClientes({
     return COLUMNAS_DEFAULT;
   });
 
-  // Estados para el modal de enriquecimiento IA
+  // Estados para el modal de enriquecimiento IA (individual + bulk)
   const [isEnrichmentModalOpen, setIsEnrichmentModalOpen] = useState(false);
   const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [bulkEnrichIds, setBulkEnrichIds] = useState<string[]>([]);
+  const [bulkEnrichNames, setBulkEnrichNames] = useState<string[]>([]);
+
+  // Estados para el modal de contacto
+  const [isContactModalOpen, setIsContactModalOpen] = useState(false);
+  const [contactCliente, setContactCliente] = useState<Cliente | null>(null);
+  const [contactDefaultTab, setContactDefaultTab] = useState<'email' | 'whatsapp'>('email');
 
   // Estados para acciones masivas
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
@@ -110,6 +119,7 @@ export function TablaClientes({
   const [bulkValue, setBulkValue] = useState('');
   const [isBulkLoading, setIsBulkLoading] = useState(false);
   const [showBulkModal, setShowBulkModal] = useState(false);
+  const [showBulkContactModal, setShowBulkContactModal] = useState(false);
 
   const allPageSelected = useMemo(
     () => clientes.length > 0 && clientes.every(c => selectedIds.has(c.id)),
@@ -135,13 +145,34 @@ export function TablaClientes({
   const closeEnrichmentModal = useCallback(() => {
     setIsEnrichmentModalOpen(false);
     setSelectedCliente(null);
+    setBulkEnrichIds([]);
+    setBulkEnrichNames([]);
+    router.refresh();
+  }, [router]);
+
+  const openBulkEnrichModal = useCallback(() => {
+    const ids = Array.from(selectedIds);
+    const names = clientes.filter(c => selectedIds.has(c.id)).map(c => c.nombre);
+    setBulkEnrichIds(ids);
+    setBulkEnrichNames(names);
+    setSelectedCliente(null);
+    setIsEnrichmentModalOpen(true);
+  }, [selectedIds, clientes]);
+
+  const openContactModal = useCallback((cliente: Cliente, tab: 'email' | 'whatsapp') => {
+    setContactCliente(cliente);
+    setContactDefaultTab(tab);
+    setIsContactModalOpen(true);
   }, []);
 
-  const handleEnrichmentSuccess = useCallback(() => {
-    closeEnrichmentModal();
-    // Refresh server components to show updated data
+  const closeContactModal = useCallback(() => {
+    setIsContactModalOpen(false);
+    setContactCliente(null);
+  }, []);
+
+  const handleContactSuccess = useCallback(() => {
     router.refresh();
-  }, [closeEnrichmentModal, router]);
+  }, [router]);
 
   const handleDelete = useCallback(async (cliente: Cliente) => {
     if (!confirm(`¿Estás seguro de que deseas eliminar a "${cliente.nombre}"? Esta acción no se puede deshacer.`)) {
@@ -275,6 +306,22 @@ export function TablaClientes({
             <Button
               variant="outline"
               size="sm"
+              onClick={openBulkEnrichModal}
+            >
+              <SparklesIcon className="h-3.5 w-3.5 mr-1" />
+              Enriquecer
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => setShowBulkContactModal(true)}
+            >
+              <EnvelopeIcon className="h-3.5 w-3.5 mr-1" />
+              Contactar
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
               onClick={() => openBulkModal('changeEstado')}
             >
               Cambiar Estado
@@ -312,7 +359,7 @@ export function TablaClientes({
             <thead className="bg-gray-50">
               <tr>
                 {/* Checkbox header */}
-                <th className="px-1 py-3 text-center" style={{width: '2%'}}>
+                <th className="px-0.5 py-3 text-center" style={{width: '2%'}}>
                   <input
                     type="checkbox"
                     checked={allPageSelected}
@@ -388,21 +435,6 @@ export function TablaClientes({
                 >
                   <span>Industria</span>
                   {sortField === 'industria' && (
-                    sortOrder === 'asc' ?
-                    <ChevronUpIcon className="h-4 w-4" /> :
-                    <ChevronDownIcon className="h-4 w-4" />
-                  )}
-                </Link>
-              </th>
-            )}
-{columnasActivas.includes('agente') && (
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '8%'}}>
-                <Link
-                  href={createSortUrl('agente')}
-                  className="flex items-center space-x-1 hover:text-gray-700"
-                >
-                  <span>Agente</span>
-                  {sortField === 'agente' && (
                     sortOrder === 'asc' ?
                     <ChevronUpIcon className="h-4 w-4" /> :
                     <ChevronDownIcon className="h-4 w-4" />
@@ -491,13 +523,13 @@ export function TablaClientes({
               </th>
             )}
 {columnasActivas.includes('acciones') && (
-              <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '10%'}}>
+              <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '14%'}}>
                 Acciones
               </th>
             )}
               </tr>
           </thead>
-          <tbody className="bg-white divide-y divide-gray-200">
+          <tbody className="bg-white divide-y divide-gray-200 text-xs">
             {clientes.length === 0 ? (
               <tr>
                 <td colSpan={totalColSpan} className="px-6 py-12 text-center">
@@ -515,22 +547,22 @@ export function TablaClientes({
                   key={cliente.id}
                   className={selectedIds.has(cliente.id) ? 'bg-blue-50' : 'hover:bg-gray-50'}
                 >
-                  <td className="px-1 py-3 text-center">
+                  <td className="px-0.5 py-2 text-center">
                     <input
                       type="checkbox"
                       checked={selectedIds.has(cliente.id)}
                       onChange={() => toggleSelect(cliente.id)}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                      className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
                     />
                   </td>
                   {columnasActivas.includes('nombre') && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="overflow-hidden">
-                      <div className="text-sm font-medium text-gray-900 truncate">
+                      <Link href={`/clientes/${cliente.id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline truncate block">
                         {cliente.nombre}
-                      </div>
+                      </Link>
                         {(cliente.direccion || cliente.ciudad) && (
-                          <div className="text-sm text-gray-500 truncate">
+                          <div className="text-gray-500 truncate">
                             {[cliente.direccion, cliente.ciudad].filter(Boolean).join(', ')}
                           </div>
                         )}
@@ -538,8 +570,8 @@ export function TablaClientes({
                     </td>
                   )}
                 {columnasActivas.includes('contacto') && (
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900 overflow-hidden">
+                  <td className="px-3 py-2">
+                    <div className="text-gray-900 overflow-hidden">
                       {cliente.email && (
                         <div className="truncate">
                           <a
@@ -569,16 +601,16 @@ export function TablaClientes({
                   </td>
                 )}
                 {columnasActivas.includes('estado') && (
-                  <td className="px-3 py-3">
-                    <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${getBadgeColor(cliente.estado)}`}>
+                  <td className="px-3 py-2">
+                    <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${getBadgeColor(cliente.estado)}`}>
                       {cliente.estado}
                     </span>
                   </td>
                 )}
                 {columnasActivas.includes('prioridad') && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     {cliente.prioridad && (
-                      <span className={`inline-flex items-center px-2 py-1 rounded-full text-xs font-medium ${
+                      <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${
                         cliente.prioridad === 'CRITICA' ? 'bg-red-100 text-red-800' :
                         cliente.prioridad === 'ALTA' ? 'bg-orange-100 text-orange-800' :
                         cliente.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800' :
@@ -588,31 +620,22 @@ export function TablaClientes({
                       </span>
                     )}
                     {!cliente.prioridad && (
-                      <span className="text-gray-400 text-xs">Sin prioridad</span>
+                      <span className="text-gray-400">Sin prioridad</span>
                     )}
                   </td>
                 )}
                 {columnasActivas.includes('industria') && (
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900 truncate" title={cliente.industria || 'Sin especificar'}>
+                  <td className="px-3 py-2">
+                    <div className="text-gray-900 truncate" title={cliente.industria || 'Sin especificar'}>
                       {cliente.industria || (
                         <span className="text-gray-400">Sin especificar</span>
                       )}
                     </div>
                   </td>
                 )}
-                {columnasActivas.includes('agente') && (
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-900 truncate" title={cliente.agente?.name || 'Sin asignar'}>
-                      {cliente.agente?.name || (
-                        <span className="text-gray-400">Sin asignar</span>
-                      )}
-                    </div>
-                  </td>
-                )}
                 {columnasActivas.includes('ultimoContacto') && (
-                  <td className="px-3 py-3">
-                    <div className="text-sm text-gray-500 truncate">
+                  <td className="px-3 py-2">
+                    <div className="text-gray-500 truncate">
                       {cliente.ultimoContacto ? (
                         <span title={new Date(cliente.ultimoContacto).toLocaleString('es-ES')}>
                           {new Date(cliente.ultimoContacto).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
@@ -624,19 +647,19 @@ export function TablaClientes({
                   </td>
                 )}
                 {columnasActivas.includes('ultimaIA') && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <UltimaIADisplay
                       fecha={cliente.ultimaIA}
                     />
                   </td>
                 )}
                 {columnasActivas.includes('fechaCreacion') && (
-                  <td className="px-3 py-3 text-sm text-gray-500 truncate">
+                  <td className="px-3 py-2 text-gray-500 truncate">
                     {new Date(cliente.fechaCreacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
                   </td>
                 )}
                 {columnasActivas.includes('fechaModific') && (
-                  <td className="px-3 py-3 text-sm text-gray-500 truncate">
+                  <td className="px-3 py-2 text-gray-500 truncate">
                     {cliente.fechaModific ? (
                       new Date(cliente.fechaModific).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
                     ) : (
@@ -645,7 +668,7 @@ export function TablaClientes({
                   </td>
                 )}
                 {columnasActivas.includes('sitioWeb') && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     {cliente.sitioWeb ? (
                       <a
                         href={cliente.sitioWeb.startsWith('http') ? cliente.sitioWeb : `https://${cliente.sitioWeb}`}
@@ -662,7 +685,7 @@ export function TablaClientes({
                   </td>
                 )}
                 {columnasActivas.includes('redesSociales') && (
-                  <td className="px-3 py-3">
+                  <td className="px-3 py-2">
                     <div className="flex items-center gap-1">
                       {cliente.whatsapp && <span className="text-green-600" title="WhatsApp">📱</span>}
                       {cliente.instagram && <span className="text-pink-600" title="Instagram">📷</span>}
@@ -676,57 +699,78 @@ export function TablaClientes({
                   </td>
                 )}
                 {columnasActivas.includes('acciones') && (
-                  <td className="px-3 py-3">
-                    <div className="flex items-center space-x-1">
+                  <td className="px-2 py-2">
+                    <div className="flex items-center flex-wrap gap-0.5">
                       <Link href={`/clientes/${cliente.id}`}>
-                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-300">
-                          <EyeIcon className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-sky-50 border-sky-300 hover:bg-sky-100 hover:border-sky-400" title="Ver cliente">
+                          <EyeIcon className="h-3 w-3 text-sky-700" />
                         </Button>
                       </Link>
                       <Link href={`/clientes/${cliente.id}/editar`}>
-                        <Button variant="outline" size="sm" className="h-7 w-7 p-0 border-gray-300">
-                          <PencilIcon className="h-3.5 w-3.5" />
+                        <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-amber-50 border-amber-300 hover:bg-amber-100 hover:border-amber-400" title="Editar cliente">
+                          <PencilIcon className="h-3 w-3 text-amber-700" />
                         </Button>
                       </Link>
+                      <Button
+                        onClick={() => openContactModal(cliente, 'email')}
+                        variant="outline"
+                        size="sm"
+                        className="h-6 w-6 p-0 bg-blue-50 border-blue-300 hover:bg-blue-100 hover:border-blue-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={cliente.email ? 'Enviar email con plantilla' : 'Sin email'}
+                        disabled={!cliente.email}
+                      >
+                        <EnvelopeIcon className="h-3 w-3 text-blue-600" />
+                      </Button>
+                      <Button
+                        onClick={() => openContactModal(cliente, 'whatsapp')}
+                        variant="outline"
+                        size="sm"
+                        className="h-6 w-6 p-0 bg-green-50 border-green-300 hover:bg-green-100 hover:border-green-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={cliente.whatsapp ? 'Enviar WhatsApp con plantilla' : 'Sin WhatsApp'}
+                        disabled={!cliente.whatsapp}
+                      >
+                        <svg className="h-3 w-3 text-green-600" fill="currentColor" viewBox="0 0 24 24">
+                          <path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/>
+                        </svg>
+                      </Button>
                       <Button
                         onClick={() => openEnrichmentModal(cliente)}
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 p-0 border-gray-300 hover:border-purple-400 hover:bg-purple-50"
+                        className="h-6 w-6 p-0 bg-purple-50 border-purple-300 hover:bg-purple-100 hover:border-purple-400"
                         title="Buscar información con IA (OpenAI)"
                       >
-                        <SparklesIcon className="h-3.5 w-3.5 text-purple-600" />
+                        <SparklesIcon className="h-3 w-3 text-purple-600" />
                       </Button>
                       <Link href={`/clientes/${cliente.id}#enrichment`}>
                         <Button
                           variant="outline"
                           size="sm"
-                          className="h-7 w-7 p-0 border-gray-300 hover:border-blue-400 hover:bg-blue-50"
+                          className="h-6 w-6 p-0 bg-indigo-50 border-indigo-300 hover:bg-indigo-100 hover:border-indigo-400"
                           title="Ver página de búsqueda detallada"
                         >
-                          <MagnifyingGlassIcon className="h-3.5 w-3.5 text-blue-600" />
+                          <MagnifyingGlassIcon className="h-3 w-3 text-indigo-600" />
                         </Button>
                       </Link>
-                      {cliente.sitioWeb && (
-                        <Link href={`/clientes/${cliente.id}#web-analysis`}>
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            className="h-7 w-7 p-0 border-gray-300 hover:border-green-400 hover:bg-green-50"
-                            title="Analizar sitio web (capturas, PageSpeed, etc.)"
-                          >
-                            <GlobeAltIcon className="h-3.5 w-3.5 text-green-600" />
-                          </Button>
-                        </Link>
-                      )}
+                      <Link href={`/clientes/${cliente.id}#web-analysis`} className={!cliente.sitioWeb ? 'pointer-events-none' : ''}>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          className="h-6 w-6 p-0 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
+                          title={cliente.sitioWeb ? 'Analizar sitio web (capturas, PageSpeed, etc.)' : 'Sin sitio web'}
+                          disabled={!cliente.sitioWeb}
+                        >
+                          <GlobeAltIcon className="h-3 w-3 text-emerald-600" />
+                        </Button>
+                      </Link>
                       <Button
                         onClick={() => handleDelete(cliente)}
                         variant="outline"
                         size="sm"
-                        className="h-7 w-7 p-0 border-gray-300 hover:border-red-400 hover:bg-red-50"
+                        className="h-6 w-6 p-0 bg-red-50 border-red-300 hover:bg-red-100 hover:border-red-400"
                         title="Eliminar cliente"
                       >
-                        <TrashIcon className="h-3.5 w-3.5 text-red-600" />
+                        <TrashIcon className="h-3 w-3 text-red-600" />
                       </Button>
                     </div>
                   </td>
@@ -739,34 +783,42 @@ export function TablaClientes({
         </div>
       </div>
 
-      {/* Modal de enriquecimiento IA */}
-      {selectedCliente && (
-        <EnrichmentModal
-          isOpen={isEnrichmentModalOpen}
-          onClose={closeEnrichmentModal}
+      {/* Modal de enriquecimiento IA (individual o bulk) */}
+      <EnrichmentModal
+        isOpen={isEnrichmentModalOpen}
+        onClose={closeEnrichmentModal}
+        clienteIds={selectedCliente ? [selectedCliente.id] : bulkEnrichIds}
+        clienteNames={selectedCliente ? [selectedCliente.nombre] : bulkEnrichNames}
+        clientHasWebsite={selectedCliente ? !!selectedCliente.sitioWeb : false}
+      />
+
+      {/* Modal de contacto */}
+      {contactCliente && (
+        <ContactModal
+          isOpen={isContactModalOpen}
+          onClose={closeContactModal}
           cliente={{
-            id: selectedCliente.id,
-            nombre: selectedCliente.nombre,
-            email: selectedCliente.email,
-            telefono: selectedCliente.telefono,
-            whatsapp: selectedCliente.whatsapp ?? null,
-            instagram: selectedCliente.instagram ?? null,
-            facebook: selectedCliente.facebook ?? null,
-            linkedin: selectedCliente.linkedin ?? null,
-            twitter: selectedCliente.twitter ?? null,
-            sitioWeb: selectedCliente.sitioWeb,
-            tieneSSL: null,
-            esResponsive: null,
-            direccion: selectedCliente.direccion,
-            ciudad: selectedCliente.ciudad,
-            provincia: null,
-            codigoPostal: null,
-            industria: selectedCliente.industria,
-            notas: null,
+            id: contactCliente.id,
+            nombre: contactCliente.nombre,
+            email: contactCliente.email,
+            telefono: contactCliente.telefono,
+            whatsapp: contactCliente.whatsapp ?? null,
+            direccion: contactCliente.direccion,
+            ciudad: contactCliente.ciudad,
+            industria: contactCliente.industria,
           }}
-          onSuccess={handleEnrichmentSuccess}
+          onSuccess={handleContactSuccess}
+          defaultTab={contactDefaultTab}
         />
       )}
+
+      {/* Modal de contacto masivo */}
+      <BulkContactModal
+        isOpen={showBulkContactModal}
+        onClose={() => setShowBulkContactModal(false)}
+        clienteIds={Array.from(selectedIds)}
+        onSuccess={() => router.refresh()}
+      />
 
       {/* Modal de acciones masivas */}
       <Modal
