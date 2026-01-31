@@ -449,6 +449,15 @@ export class BulkEnrichmentService {
       description: string | null;
       companySize: string | null;
       address: string | null;
+      emails: Array<{ email: string; type?: string }> | null;
+      phones: Array<{ number: string; type?: string }> | null;
+      socialProfiles: Record<string, string> | null;
+      websiteScore: number | null;
+      industryScore: number | null;
+      descriptionScore: number | null;
+      companySizeScore: number | null;
+      addressScore: number | null;
+      aiProvidersUsed: string[] | null;
       enrichedAt: Date | null;
       currentWebsite: string | null;
       currentIndustry: string | null;
@@ -466,6 +475,15 @@ export class BulkEnrichmentService {
       distinct: ['clienteId'],
     });
 
+    const parseJson = <T>(val: string | null | undefined): T | null => {
+      if (!val) return null;
+      try {
+        return JSON.parse(val) as T;
+      } catch {
+        return null;
+      }
+    };
+
     return enrichments.map((e) => ({
       id: e.id,
       clienteId: e.clienteId,
@@ -475,6 +493,15 @@ export class BulkEnrichmentService {
       description: e.description,
       companySize: e.companySize,
       address: e.address,
+      emails: parseJson<Array<{ email: string; type?: string }>>(e.emails),
+      phones: parseJson<Array<{ number: string; type?: string }>>(e.phones),
+      socialProfiles: parseJson<Record<string, string>>(e.socialProfiles),
+      websiteScore: e.websiteScore,
+      industryScore: e.industryScore,
+      descriptionScore: e.descriptionScore,
+      companySizeScore: e.companySizeScore,
+      addressScore: e.addressScore,
+      aiProvidersUsed: parseJson<string[]>(e.aiProvidersUsed),
       enrichedAt: e.enrichedAt,
       currentWebsite: e.cliente.sitioWeb,
       currentIndustry: e.cliente.industria,

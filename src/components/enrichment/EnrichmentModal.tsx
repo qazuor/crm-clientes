@@ -2,12 +2,12 @@
 
 import { useState, useMemo, useCallback } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { XMarkIcon, CheckCircleIcon, XCircleIcon } from '@heroicons/react/24/outline';
+import { XMarkIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { useEnrichment, type BatchFieldItem } from '@/hooks/useEnrichment';
 import { EnrichmentForm } from './EnrichmentForm';
 import { EnrichmentReview, type ReviewField } from './EnrichmentReview';
 import { EnrichmentProgress } from './shared/EnrichmentProgress';
-import { REVIEWABLE_FIELDS } from '@/types/enrichment';
+import { ConfidenceBadge } from './shared/ConfidenceBadge';
 import type { AIProvider, FieldReviewStatus } from '@/types/enrichment';
 
 const FIELD_LABELS: Record<string, string> = {
@@ -79,7 +79,6 @@ export function EnrichmentModal({
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
-  const [bulkReviewDone, setBulkReviewDone] = useState(false);
 
   // Build review fields from latest enrichment
   const reviewFields = useMemo((): ReviewField[] => {
@@ -207,6 +206,7 @@ export function EnrichmentModal({
             provider: options.provider,
           });
           setBulkResult(result);
+          await enrichment.bulk.refetch();
           setStep('review');
         } else {
           await enrichment.enrich({
@@ -282,44 +282,11 @@ export function EnrichmentModal({
     [enrichment]
   );
 
-  // Bulk review: accept all pending fields for all enriched clients
-  const handleBulkConfirmAll = useCallback(async () => {
-    if (enrichedClientIds.length === 0) return;
-    const allFields = [...REVIEWABLE_FIELDS];
-    const items: BatchFieldItem[] = enrichedClientIds.map((clienteId) => ({
-      clienteId,
-      fields: allFields,
-    }));
-    try {
-      await enrichment.bulk.confirmBatch(items);
-      setBulkReviewDone(true);
-    } catch (err) {
-      setEnrichError(err instanceof Error ? err.message : 'Error al confirmar datos');
-    }
-  }, [enrichedClientIds, enrichment]);
-
-  // Bulk review: reject all pending fields for all enriched clients
-  const handleBulkRejectAll = useCallback(async () => {
-    if (enrichedClientIds.length === 0) return;
-    const allFields = [...REVIEWABLE_FIELDS];
-    const items: BatchFieldItem[] = enrichedClientIds.map((clienteId) => ({
-      clienteId,
-      fields: allFields,
-    }));
-    try {
-      await enrichment.bulk.rejectBatch(items);
-      setBulkReviewDone(true);
-    } catch (err) {
-      setEnrichError(err instanceof Error ? err.message : 'Error al rechazar datos');
-    }
-  }, [enrichedClientIds, enrichment]);
-
   const handleClose = () => {
     setStep('form');
     setCooldownConfirmed(false);
     setEnrichError(null);
     setBulkResult(null);
-    setBulkReviewDone(false);
     onClose();
   };
 
@@ -333,9 +300,11 @@ export function EnrichmentModal({
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 animate-in fade-in-0" />
         <Dialog.Content
-          className="fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
-                     w-full max-w-lg max-h-[85vh] overflow-y-auto bg-white rounded-lg shadow-xl
-                     animate-in fade-in-0 zoom-in-95 focus:outline-none p-6"
+          className={`fixed left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2
+                     w-full max-h-[85vh] overflow-y-auto bg-white rounded-lg shadow-xl
+                     animate-in fade-in-0 zoom-in-95 focus:outline-none p-6 ${
+                       step === 'review' && isBulk ? 'max-w-2xl' : 'max-w-lg'
+                     }`}
         >
           <Dialog.Title className="text-lg font-semibold text-gray-900 pr-8">
             {title}
@@ -403,15 +372,16 @@ export function EnrichmentModal({
 
             {/* Review step: bulk */}
             {step === 'review' && isBulk && bulkResult && (
-              <BulkReviewStep
+              <BulkAccordionReview
                 bulkResult={bulkResult}
-                enrichedCount={enrichedClientIds.length}
-                onConfirmAll={handleBulkConfirmAll}
-                onRejectAll={handleBulkRejectAll}
-                onClose={handleClose}
+                enrichedClientIds={enrichedClientIds}
+                pendingConfirmation={enrichment.bulk.pendingConfirmation}
+                isBulkLoading={enrichment.bulk.isLoading}
+                onConfirmBatch={enrichment.bulk.confirmBatch}
+                onRejectBatch={enrichment.bulk.rejectBatch}
                 isConfirming={enrichment.bulk.isConfirming}
                 isRejecting={enrichment.bulk.isRejecting}
-                reviewDone={bulkReviewDone}
+                onClose={handleClose}
               />
             )}
 
@@ -454,42 +424,233 @@ export function EnrichmentModal({
   );
 }
 
+// ─── Types for BulkAccordionReview ──────────────────────────────────
+
+type PendingConfirmationItem = {
+  id: string;
+  clienteId: string;
+  clienteName: string;
+  website: string | null;
+  industry: string | null;
+  description: string | null;
+  companySize: string | null;
+  address: string | null;
+  emails: Array<{ email: string; type?: string }> | null;
+  phones: Array<{ number: string; type?: string }> | null;
+  socialProfiles: Record<string, string> | null;
+  websiteScore: number | null;
+  industryScore: number | null;
+  descriptionScore: number | null;
+  companySizeScore: number | null;
+  addressScore: number | null;
+  aiProvidersUsed: string[] | null;
+  enrichedAt: string | null;
+  fieldStatuses: Record<string, string> | null;
+};
+
+interface AccordionFieldInfo {
+  name: string;
+  label: string;
+  value: string;
+  score: number;
+  status: string;
+}
+
+/** Extract displayable fields with data from a pending confirmation record. */
+function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
+  const fields: AccordionFieldInfo[] = [];
+  const statuses = item.fieldStatuses ?? {};
+
+  const add = (name: string, value: string | null | undefined, score: number | null | undefined) => {
+    if (!value) return;
+    fields.push({
+      name,
+      label: FIELD_LABELS[name] ?? name,
+      value,
+      score: score ?? 0,
+      status: statuses[name] ?? 'PENDING',
+    });
+  };
+
+  add('website', item.website, item.websiteScore);
+  add('industry', item.industry, item.industryScore);
+  add('description', item.description, item.descriptionScore);
+  add('companySize', item.companySize, item.companySizeScore);
+  add('address', item.address, item.addressScore);
+
+  if (item.emails && item.emails.length > 0) {
+    const emailStr = item.emails.map((e) => e.email).join(', ');
+    fields.push({
+      name: 'emails',
+      label: FIELD_LABELS.emails,
+      value: emailStr,
+      score: 0.7,
+      status: statuses.emails ?? 'PENDING',
+    });
+  }
+
+  if (item.phones && item.phones.length > 0) {
+    const phoneStr = item.phones.map((p) => p.number).join(', ');
+    fields.push({
+      name: 'phones',
+      label: FIELD_LABELS.phones,
+      value: phoneStr,
+      score: 0.7,
+      status: statuses.phones ?? 'PENDING',
+    });
+  }
+
+  if (item.socialProfiles && Object.keys(item.socialProfiles).length > 0) {
+    const spStr = Object.entries(item.socialProfiles)
+      .map(([k, v]) => `${k}: ${v}`)
+      .join(', ');
+    fields.push({
+      name: 'socialProfiles',
+      label: FIELD_LABELS.socialProfiles,
+      value: spStr,
+      score: 0.6,
+      status: statuses.socialProfiles ?? 'PENDING',
+    });
+  }
+
+  // Only return fields that are still PENDING
+  return fields.filter((f) => f.status === 'PENDING');
+}
+
 /**
- * Bulk review step: shows enrichment results per client and lets user accept/reject all.
+ * Accordion-based bulk review: expand each client, select/deselect individual fields.
  */
-function BulkReviewStep({
+function BulkAccordionReview({
   bulkResult,
-  enrichedCount,
-  onConfirmAll,
-  onRejectAll,
-  onClose,
+  enrichedClientIds,
+  pendingConfirmation,
+  isBulkLoading,
+  onConfirmBatch,
+  onRejectBatch,
   isConfirming,
   isRejecting,
-  reviewDone,
+  onClose,
 }: {
   bulkResult: BulkResult;
-  enrichedCount: number;
-  onConfirmAll: () => void;
-  onRejectAll: () => void;
-  onClose: () => void;
+  enrichedClientIds: string[];
+  pendingConfirmation: PendingConfirmationItem[];
+  isBulkLoading: boolean;
+  onConfirmBatch: (items: BatchFieldItem[]) => Promise<unknown>;
+  onRejectBatch: (items: BatchFieldItem[]) => Promise<unknown>;
   isConfirming: boolean;
   isRejecting: boolean;
-  reviewDone: boolean;
+  onClose: () => void;
 }) {
+  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
+  const [reviewDone, setReviewDone] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  // Filter to only clients that were enriched in this batch and have pending data
+  const relevantClients = useMemo(() => {
+    const enrichedSet = new Set(enrichedClientIds);
+    return pendingConfirmation
+      .filter((item) => enrichedSet.has(item.clienteId))
+      .map((item) => ({
+        ...item,
+        fields: extractFields(item),
+      }))
+      .filter((item) => item.fields.length > 0);
+  }, [pendingConfirmation, enrichedClientIds]);
+
+  // Per-client field selections: clienteId → Set<fieldName>
+  const [selections, setSelections] = useState<Record<string, Set<string>>>(() => {
+    const initial: Record<string, Set<string>> = {};
+    // We need to compute from pendingConfirmation directly in initializer
+    const enrichedSet = new Set(enrichedClientIds);
+    for (const item of pendingConfirmation) {
+      if (!enrichedSet.has(item.clienteId)) continue;
+      const fields = extractFields(item);
+      if (fields.length === 0) continue;
+      const selected = new Set<string>();
+      for (const f of fields) {
+        if (f.score >= 0.6) selected.add(f.name);
+      }
+      initial[item.clienteId] = selected;
+    }
+    return initial;
+  });
+
+  // Totals
+  const totalFields = relevantClients.reduce((sum, c) => sum + c.fields.length, 0);
+  const totalSelected = Object.values(selections).reduce((sum, s) => sum + s.size, 0);
+  const clientsWithSelections = Object.entries(selections).filter(([, s]) => s.size > 0).length;
+
   const isProcessing = isConfirming || isRejecting;
 
+  const toggleExpanded = (clienteId: string) => {
+    setExpandedIds((prev) => {
+      const next = new Set(prev);
+      if (next.has(clienteId)) next.delete(clienteId);
+      else next.add(clienteId);
+      return next;
+    });
+  };
+
+  const toggleField = (clienteId: string, fieldName: string) => {
+    setSelections((prev) => {
+      const current = prev[clienteId] ?? new Set<string>();
+      const next = new Set(current);
+      if (next.has(fieldName)) next.delete(fieldName);
+      else next.add(fieldName);
+      return { ...prev, [clienteId]: next };
+    });
+  };
+
+  const selectAll = (clienteId: string, fields: AccordionFieldInfo[]) => {
+    setSelections((prev) => ({
+      ...prev,
+      [clienteId]: new Set(fields.map((f) => f.name)),
+    }));
+  };
+
+  const deselectAll = (clienteId: string) => {
+    setSelections((prev) => ({
+      ...prev,
+      [clienteId]: new Set<string>(),
+    }));
+  };
+
+  const handleSubmit = async () => {
+    setError(null);
+    try {
+      const confirmItems: BatchFieldItem[] = [];
+      const rejectItems: BatchFieldItem[] = [];
+
+      for (const client of relevantClients) {
+        const selected = selections[client.clienteId] ?? new Set<string>();
+        const selectedFields = client.fields.filter((f) => selected.has(f.name)).map((f) => f.name);
+        const rejectedFields = client.fields.filter((f) => !selected.has(f.name)).map((f) => f.name);
+
+        if (selectedFields.length > 0) {
+          confirmItems.push({ clienteId: client.clienteId, fields: selectedFields });
+        }
+        if (rejectedFields.length > 0) {
+          rejectItems.push({ clienteId: client.clienteId, fields: rejectedFields });
+        }
+      }
+
+      if (confirmItems.length > 0) await onConfirmBatch(confirmItems);
+      if (rejectItems.length > 0) await onRejectBatch(rejectItems);
+      setReviewDone(true);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Error al procesar revisión');
+    }
+  };
+
+  // Done state
   if (reviewDone) {
     return (
       <div className="flex flex-col items-center gap-3 py-6">
         <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
           <CheckCircleIcon className="h-6 w-6 text-green-600" />
         </div>
-        <p className="text-sm font-medium text-gray-900">
-          Revisión completada
-        </p>
-        <p className="text-xs text-gray-500">
-          Los datos han sido {isConfirming ? 'aceptados' : 'procesados'} correctamente.
-        </p>
+        <p className="text-sm font-medium text-gray-900">Revisión completada</p>
+        <p className="text-xs text-gray-500">Los datos han sido procesados correctamente.</p>
         <button
           type="button"
           onClick={onClose}
@@ -497,6 +658,16 @@ function BulkReviewStep({
         >
           Cerrar
         </button>
+      </div>
+    );
+  }
+
+  // Loading state
+  if (isBulkLoading && relevantClients.length === 0) {
+    return (
+      <div className="flex flex-col items-center gap-3 py-8">
+        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+        <p className="text-sm text-gray-500">Cargando datos de enriquecimiento...</p>
       </div>
     );
   }
@@ -518,69 +689,135 @@ function BulkReviewStep({
         )}
       </div>
 
-      {/* Per-client results */}
-      <div className="max-h-60 overflow-y-auto">
-        <div className="flex flex-col gap-1.5">
-          {bulkResult.results.map((r) => (
-            <div
-              key={r.clienteId}
-              className={`flex items-center gap-2 rounded-md px-3 py-2 text-sm ${
-                r.success
-                  ? 'bg-green-50 text-green-800'
-                  : 'bg-red-50 text-red-800'
-              }`}
-            >
-              {r.success ? (
-                <CheckCircleIcon className="h-4 w-4 flex-shrink-0 text-green-500" />
-              ) : (
-                <XCircleIcon className="h-4 w-4 flex-shrink-0 text-red-500" />
-              )}
-              <span className="flex-1 truncate">{r.clienteName}</span>
-              {r.aiEnriched && (
-                <span className="text-xs text-green-600">IA</span>
-              )}
-              {r.websiteAnalyzed && (
-                <span className="text-xs text-green-600">Web</span>
-              )}
-              {r.error && (
-                <span className="text-xs text-red-500 truncate max-w-[120px]" title={r.error}>
-                  {r.error}
-                </span>
-              )}
-            </div>
-          ))}
-        </div>
-      </div>
-
-      {/* Actions */}
-      {enrichedCount > 0 && (
-        <div className="flex flex-col gap-2 border-t border-gray-200 pt-4">
-          <p className="text-xs text-gray-500">
-            {enrichedCount} cliente{enrichedCount !== 1 ? 's' : ''} con datos pendientes de revisión
-          </p>
-          <div className="flex items-center gap-3">
-            <button
-              type="button"
-              onClick={onConfirmAll}
-              disabled={isProcessing}
-              className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-            >
-              {isConfirming ? 'Aceptando...' : 'Aceptar todos los datos'}
-            </button>
-            <button
-              type="button"
-              onClick={onRejectAll}
-              disabled={isProcessing}
-              className="flex-1 rounded border border-red-300 px-4 py-2 text-sm font-medium text-red-700 hover:bg-red-50 disabled:opacity-50"
-            >
-              {isRejecting ? 'Rechazando...' : 'Rechazar todos'}
-            </button>
-          </div>
+      {error && (
+        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
+          {error}
         </div>
       )}
 
-      {enrichedCount === 0 && (
+      {/* Accordion */}
+      {relevantClients.length > 0 ? (
+        <>
+          <div className="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
+            {relevantClients.map((client) => {
+              const isExpanded = expandedIds.has(client.clienteId);
+              const selected = selections[client.clienteId] ?? new Set<string>();
+              return (
+                <div key={client.clienteId} className="border-b border-gray-100 last:border-b-0">
+                  {/* Accordion header */}
+                  <button
+                    type="button"
+                    onClick={() => toggleExpanded(client.clienteId)}
+                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
+                  >
+                    <span className="flex-1 text-sm font-medium text-gray-900 truncate">
+                      {client.clienteName}
+                    </span>
+                    <span className="text-xs text-gray-500">
+                      {selected.size} de {client.fields.length}
+                    </span>
+                    {isExpanded ? (
+                      <ChevronUpIcon className="h-4 w-4 text-gray-400" />
+                    ) : (
+                      <ChevronDownIcon className="h-4 w-4 text-gray-400" />
+                    )}
+                  </button>
+
+                  {/* Accordion body */}
+                  {isExpanded && (
+                    <div className="border-t border-gray-100 bg-white px-4 py-3">
+                      {/* Toolbar */}
+                      <div className="mb-2 flex items-center gap-2">
+                        <button
+                          type="button"
+                          onClick={() => selectAll(client.clienteId, client.fields)}
+                          disabled={isProcessing}
+                          className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                        >
+                          Seleccionar todo
+                        </button>
+                        <span className="text-gray-300">|</span>
+                        <button
+                          type="button"
+                          onClick={() => deselectAll(client.clienteId)}
+                          disabled={isProcessing}
+                          className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
+                        >
+                          Deseleccionar todo
+                        </button>
+                      </div>
+
+                      {/* Fields */}
+                      <div className="flex flex-col gap-1.5">
+                        {client.fields.map((field) => (
+                          <label
+                            key={field.name}
+                            className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
+                              selected.has(field.name)
+                                ? 'border-blue-300 bg-blue-50'
+                                : 'border-gray-200 bg-white hover:bg-gray-50'
+                            }`}
+                          >
+                            <input
+                              type="checkbox"
+                              checked={selected.has(field.name)}
+                              onChange={() => toggleField(client.clienteId, field.name)}
+                              disabled={isProcessing}
+                              className="rounded text-blue-600"
+                            />
+                            <div className="flex flex-1 flex-col min-w-0">
+                              <div className="flex items-center gap-2">
+                                <span className="text-sm font-medium text-gray-900">{field.label}</span>
+                                <ConfidenceBadge score={field.score} />
+                              </div>
+                              <span className="mt-0.5 text-xs text-gray-500 truncate">
+                                {field.value.length > 80 ? field.value.slice(0, 80) + '...' : field.value}
+                              </span>
+                            </div>
+                          </label>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
+          </div>
+
+          {/* Global actions */}
+          <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
+            <p className="text-xs text-gray-500">
+              {totalSelected} campo{totalSelected !== 1 ? 's' : ''} seleccionado
+              {totalSelected !== 1 ? 's' : ''} de {clientsWithSelections} cliente
+              {clientsWithSelections !== 1 ? 's' : ''}
+            </p>
+            <div className="flex items-center gap-3">
+              <button
+                type="button"
+                onClick={handleSubmit}
+                disabled={isProcessing || totalFields === 0}
+                className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
+              >
+                {isConfirming
+                  ? 'Aceptando...'
+                  : `Aceptar ${totalSelected} / Rechazar ${totalFields - totalSelected}`}
+              </button>
+              <button
+                type="button"
+                onClick={onClose}
+                disabled={isProcessing}
+                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                Cancelar
+              </button>
+            </div>
+          </div>
+        </>
+      ) : (
         <div className="border-t border-gray-200 pt-4">
+          <p className="mb-3 text-sm text-gray-500 text-center">
+            No hay campos pendientes de revisión.
+          </p>
           <button
             type="button"
             onClick={onClose}

@@ -134,6 +134,15 @@ interface BulkStatsResponse {
     description: string | null;
     companySize: string | null;
     address: string | null;
+    emails: Array<{ email: string; type?: string }> | null;
+    phones: Array<{ number: string; type?: string }> | null;
+    socialProfiles: Record<string, string> | null;
+    websiteScore: number | null;
+    industryScore: number | null;
+    descriptionScore: number | null;
+    companySizeScore: number | null;
+    addressScore: number | null;
+    aiProvidersUsed: string[] | null;
     enrichedAt: string | null;
     currentWebsite: string | null;
     currentIndustry: string | null;
