@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "epics": [
+    {
+      "specId": "ENRICH-REFACTOR-001",
+      "title": "Refactor Global del Sistema de Enriquecimiento",
+      "status": "pending",
+      "progress": "0/41",
+      "path": "ENRICH-REFACTOR-001-enrichment-system-refactor"
+    }
+  ],
+  "standalone": {
+    "path": "standalone",
+    "total": 0,
+    "completed": 0
+  }
+}

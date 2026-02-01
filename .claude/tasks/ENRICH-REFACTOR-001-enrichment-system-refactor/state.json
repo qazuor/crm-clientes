@@ -1,0 +1,2112 @@
+{
+  "version": "1.0",
+  "specRef": "ENRICH-REFACTOR-001",
+  "title": "Refactor Global del Sistema de Enriquecimiento",
+  "created": "2026-01-31T14:30:00.000Z",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Modify Prisma schema: ClienteEnrichment from 1:1 to 1:N",
+      "description": "Change the ClienteEnrichment relation in prisma/schema.prisma from a one-to-one (enrichment ClienteEnrichment?) to a one-to-many (enrichments ClienteEnrichment[]). Update the ClienteEnrichment model: remove the unique constraint on clienteId, keep the foreign key. Each AI enrichment will now create a new record instead of overwriting. The WebsiteAnalysis model stays 1:1 unchanged.",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [],
+      "blocks": [
+        "T-003"
+      ],
+      "subtasks": [
+        {
+          "title": "Change Cliente.enrichment to Cliente.enrichments (array)",
+          "completed": true
+        },
+        {
+          "title": "Remove @unique from ClienteEnrichment.clienteId",
+          "completed": true
+        },
+        {
+          "title": "Add @@index([clienteId]) to ClienteEnrichment for query performance",
+          "completed": true
+        },
+        {
+          "title": "Verify WebsiteAnalysis stays 1:1 unchanged",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "database",
+        "schema",
+        "prisma"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-002",
+      "title": "Add enrichmentStatus enum and field to Cliente model",
+      "description": "In prisma/schema.prisma, create a new enum EnrichmentStatusEnum with values: NONE, PENDING, PARTIAL, COMPLETE. Add field enrichmentStatus to the Cliente model with @default(NONE). This field allows knowing at a glance whether a client has been enriched without querying related tables.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-003"
+      ],
+      "subtasks": [
+        {
+          "title": "Create EnrichmentStatusEnum in schema.prisma",
+          "completed": true
+        },
+        {
+          "title": "Add enrichmentStatus field to Cliente model with @default(NONE)",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "database",
+        "schema",
+        "prisma"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-003",
+      "title": "Create and apply Prisma migration for 1:N and enrichmentStatus",
+      "description": "Run npx prisma migrate dev to create a migration for the schema changes from T-001 and T-002: ClienteEnrichment 1:1→1:N relation change and new enrichmentStatus field on Cliente. Verify the migration SQL is correct. Regenerate Prisma client with npx prisma generate.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-001",
+        "T-002"
+      ],
+      "blocks": [
+        "T-004"
+      ],
+      "subtasks": [
+        {
+          "title": "Run npx prisma migrate dev with descriptive name",
+          "completed": true
+        },
+        {
+          "title": "Review generated SQL migration file",
+          "completed": true
+        },
+        {
+          "title": "Verify migration applies successfully",
+          "completed": true
+        },
+        {
+          "title": "Regenerate Prisma client",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "database",
+        "migration",
+        "prisma"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-004",
+      "title": "Create data migration script: move JSON legacy fields to dedicated models",
+      "description": "Create a TypeScript migration script (prisma/migrate-legacy-json.ts) that reads existing Cliente records with data in websiteMetrics, techStack, socialProfiles, enrichmentData JSON fields and migrates that data to ClienteEnrichment and/or WebsiteAnalysis records. The script must be idempotent (safe to run multiple times). Map fields: websiteMetrics→WebsiteAnalysis performance fields, techStack→WebsiteAnalysis.techStack, socialProfiles→ClienteEnrichment.socialProfiles, enrichmentData→ClienteEnrichment fields.",
+      "status": "completed",
+      "complexity": 7,
+      "blockedBy": [
+        "T-003"
+      ],
+      "blocks": [
+        "T-005"
+      ],
+      "subtasks": [
+        {
+          "title": "Read all Clientes with non-null JSON legacy fields",
+          "completed": true
+        },
+        {
+          "title": "Map websiteMetrics to WebsiteAnalysis fields",
+          "completed": true
+        },
+        {
+          "title": "Map techStack to WebsiteAnalysis.techStack",
+          "completed": true
+        },
+        {
+          "title": "Map socialProfiles to ClienteEnrichment.socialProfiles",
+          "completed": true
+        },
+        {
+          "title": "Map enrichmentData to ClienteEnrichment fields",
+          "completed": true
+        },
+        {
+          "title": "Set enrichmentStatus based on migrated data",
+          "completed": true
+        },
+        {
+          "title": "Make script idempotent",
+          "completed": true
+        },
+        {
+          "title": "Run script and verify data integrity",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "database",
+        "migration",
+        "data"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-005",
+      "title": "Remove JSON legacy fields from Cliente schema and apply migration",
+      "description": "After data migration is complete, remove the following fields from the Cliente model in prisma/schema.prisma: websiteMetrics Json?, techStack Json?, socialProfiles Json?, enrichmentData Json?. Create and apply the Prisma migration. Regenerate Prisma client. This will cause TypeScript errors in files that reference these fields - those will be fixed in subsequent tasks.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-004"
+      ],
+      "blocks": [
+        "T-006",
+        "T-007"
+      ],
+      "subtasks": [
+        {
+          "title": "Remove websiteMetrics, techStack, socialProfiles, enrichmentData from schema",
+          "completed": true
+        },
+        {
+          "title": "Run npx prisma migrate dev",
+          "completed": true
+        },
+        {
+          "title": "Regenerate Prisma client",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "database",
+        "schema",
+        "migration",
+        "prisma"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-006",
+      "title": "Update src/types/enrichment.ts with new types for modal, history, and edit action",
+      "description": "Update src/types/enrichment.ts to add: EnrichmentMode type ('ai' | 'web'), EnrichmentStatusEnum ('NONE' | 'PENDING' | 'PARTIAL' | 'COMPLETE'), EnrichmentHistoryEntry interface (id, type, enrichedAt, providers, fieldsFound, fieldsConfirmed), EnrichmentOptions interface (provider, quick, mode, confidenceThreshold, externalApis), EditFieldAction type for the new 'edit' action in PATCH, EnrichmentGetResponse interface (latestEnrichment, websiteAnalysis, history, enrichmentStatus). Update FieldReviewStatus to include potential 'EDITED' state. Ensure ReviewableField and other existing types are preserved.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-005"
+      ],
+      "blocks": [
+        "T-008",
+        "T-009",
+        "T-010",
+        "T-011",
+        "T-012",
+        "T-013",
+        "T-015",
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-019",
+        "T-020"
+      ],
+      "subtasks": [
+        {
+          "title": "Add EnrichmentMode type",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentStatusEnum type",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentHistoryEntry interface",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentOptions interface",
+          "completed": true
+        },
+        {
+          "title": "Add edit action support to field review types",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentGetResponse interface",
+          "completed": true
+        },
+        {
+          "title": "Add CooldownInfo type",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "types",
+        "typescript"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-007",
+      "title": "Update src/types/index.ts: remove JSON legacy fields, add enrichmentStatus",
+      "description": "Update the Cliente interface in src/types/index.ts: remove websiteMetrics, techStack, socialProfiles, enrichmentData fields. Add enrichmentStatus: EnrichmentStatusEnum field. Update CreateClienteDTO and UpdateClienteDTO if they reference removed fields. Import EnrichmentStatusEnum from enrichment.ts or define inline.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-005"
+      ],
+      "blocks": [
+        "T-010",
+        "T-011",
+        "T-014"
+      ],
+      "subtasks": [
+        {
+          "title": "Remove JSON legacy fields from Cliente interface",
+          "completed": true
+        },
+        {
+          "title": "Add enrichmentStatus to Cliente interface",
+          "completed": true
+        },
+        {
+          "title": "Update DTOs that reference removed fields",
+          "completed": true
+        },
+        {
+          "title": "Fix any imports/exports affected",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "types",
+        "typescript"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-008",
+      "title": "Adapt consensus-service.ts: integrate openai-search logic if applicable",
+      "description": "Review src/app/api/openai-search/route.ts (if it exists) and determine if it has functionality not already covered by the consensus service. If so, integrate that logic into src/lib/services/consensus-service.ts as an additional provider or enhancement. If openai-search is fully redundant with existing OpenAI provider in consensus, document that and mark for deletion only. Ensure ConsensusService works correctly with the 1:N model (returns data that can be saved as a new record).",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-010"
+      ],
+      "subtasks": [
+        {
+          "title": "Review /api/openai-search route for unique functionality",
+          "completed": true
+        },
+        {
+          "title": "Integrate any unique logic into consensus service",
+          "completed": true
+        },
+        {
+          "title": "Verify consensus service output is compatible with 1:N model",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "services",
+        "ai",
+        "backend"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-009",
+      "title": "Adapt bulk-enrichment-service.ts to 1:N model",
+      "description": "Update src/lib/services/bulk-enrichment-service.ts to work with the new 1:N ClienteEnrichment model. Changes: buildFieldStatuses() should work with the latest enrichment record. getFieldUpdateData() unchanged. enrichClients() should create new records (not upsert). confirmFields/rejectFields should operate on specific enrichment IDs. getEnrichmentStats() should count based on latest enrichment per client. getClientsNeedingEnrichment() should check if latest enrichment exists. getClientesPendingConfirmation() should check latest enrichment status.",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-013"
+      ],
+      "subtasks": [
+        {
+          "title": "Update enrichClients() to create new records instead of upsert",
+          "completed": true
+        },
+        {
+          "title": "Update confirmFields/rejectFields to use enrichment ID",
+          "completed": true
+        },
+        {
+          "title": "Update getEnrichmentStats() for 1:N model",
+          "completed": true
+        },
+        {
+          "title": "Update getClientsNeedingEnrichment() to check latest record",
+          "completed": true
+        },
+        {
+          "title": "Update getClientesPendingConfirmation() for latest enrichment",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "services",
+        "backend",
+        "bulk"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-010",
+      "title": "Modify POST /api/clientes/[id]/enrich: add mode param, create new record",
+      "description": "Update src/app/api/clientes/[id]/enrich/route.ts POST handler. Add 'mode' parameter to request body: 'ai' | 'web'. When mode='ai': run consensus enrichment (existing flow) but create a NEW ClienteEnrichment record instead of upserting. When mode='web': migrate the logic from /api/enrichment (screenshots + PageSpeed + website analysis) to this endpoint, triggering website analysis and saving to WebsiteAnalysis model. Update enrichmentStatus on Cliente based on results. Add cooldown check: if last enrichment < 24h ago, include cooldownWarning in response.",
+      "status": "completed",
+      "complexity": 7,
+      "blockedBy": [
+        "T-006",
+        "T-007",
+        "T-008"
+      ],
+      "blocks": [
+        "T-014"
+      ],
+      "subtasks": [
+        {
+          "title": "Add mode parameter validation to POST body",
+          "completed": true
+        },
+        {
+          "title": "Refactor AI enrichment to create new record (not upsert)",
+          "completed": true
+        },
+        {
+          "title": "Migrate website analysis logic from /api/enrichment",
+          "completed": true
+        },
+        {
+          "title": "Update enrichmentStatus on Cliente after enrichment",
+          "completed": true
+        },
+        {
+          "title": "Add cooldown detection (check last enrichedAt)",
+          "completed": true
+        },
+        {
+          "title": "Return cooldownWarning flag in response when applicable",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "api",
+        "backend",
+        "enrichment"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-011",
+      "title": "Modify GET /api/clientes/[id]/enrich: include history and websiteAnalysis",
+      "description": "Update the GET handler in src/app/api/clientes/[id]/enrich/route.ts. Instead of returning just the single enrichment, return: latestEnrichment (most recent ClienteEnrichment by enrichedAt), websiteAnalysis (the WebsiteAnalysis record), history (array of all ClienteEnrichment records ordered by enrichedAt desc, with summary fields: id, enrichedAt, providers, fieldsFound, fieldsConfirmed), and enrichmentStatus from Cliente. This matches the EnrichmentGetResponse type defined in T-006.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-006",
+        "T-007"
+      ],
+      "blocks": [
+        "T-014"
+      ],
+      "subtasks": [
+        {
+          "title": "Query latest ClienteEnrichment (orderBy enrichedAt desc, take 1)",
+          "completed": true
+        },
+        {
+          "title": "Query WebsiteAnalysis for the client",
+          "completed": true
+        },
+        {
+          "title": "Query all ClienteEnrichment records for history",
+          "completed": true
+        },
+        {
+          "title": "Build history summary entries",
+          "completed": true
+        },
+        {
+          "title": "Return combined response matching EnrichmentGetResponse",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "api",
+        "backend",
+        "enrichment"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-012",
+      "title": "Modify PATCH /api/clientes/[id]/enrich: support 'edit' action with editedValues",
+      "description": "Update the PATCH handler in src/app/api/clientes/[id]/enrich/route.ts. Add support for action='edit' alongside existing 'confirm' and 'reject'. When action='edit', the body includes editedValues: Record<string, unknown> mapping field names to user-modified values. The handler should: validate editedValues against REVIEWABLE_FIELDS, update the ClienteEnrichment record's field with the edited value (not the AI-suggested value), mark fieldStatus as CONFIRMED (or EDITED), and apply the edited value to the Cliente record. Also update to work with specific enrichment ID (not just clienteId) for 1:N model.",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-014"
+      ],
+      "subtasks": [
+        {
+          "title": "Add 'edit' to action validation",
+          "completed": true
+        },
+        {
+          "title": "Add editedValues to request body schema",
+          "completed": true
+        },
+        {
+          "title": "Implement edit logic: save edited value to enrichment + cliente",
+          "completed": true
+        },
+        {
+          "title": "Update to work with enrichment ID for 1:N model",
+          "completed": true
+        },
+        {
+          "title": "Mark field status as CONFIRMED after edit",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "api",
+        "backend",
+        "enrichment"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-013",
+      "title": "Adapt POST/PATCH /api/admin/bulk-enrich to 1:N model",
+      "description": "Update src/app/api/admin/bulk-enrich/route.ts. POST: ensure enrichClients creates new records per client (not upserts). PATCH: update batch confirm/reject to operate on specific enrichment IDs. GET: update stats queries to work with 1:N model (latest enrichment per client). Remove ADMIN role requirement since this will now also be invoked from table bulk actions (or keep ADMIN for the endpoint but add a new bulk endpoint accessible to all authenticated users).",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-006",
+        "T-009"
+      ],
+      "blocks": [
+        "T-014"
+      ],
+      "subtasks": [
+        {
+          "title": "Update POST to create new records via bulk service",
+          "completed": true
+        },
+        {
+          "title": "Update PATCH to use enrichment IDs",
+          "completed": true
+        },
+        {
+          "title": "Update GET stats for 1:N model",
+          "completed": true
+        },
+        {
+          "title": "Review auth requirements for table bulk action access",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "api",
+        "backend",
+        "bulk"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-014",
+      "title": "Create unified useEnrichment hook",
+      "description": "Create src/hooks/useEnrichment.ts as the single hook replacing useAIEnrichment, useBulkEnrichment, and useEnrichment (legacy). Uses React Query for caching (5min stale time). Accepts clienteId (single) or clienteIds (array for bulk). Exposes: latestEnrichment, websiteAnalysis, history, enrichmentStatus, isEnriching, pendingFields, enrichAI(options), enrichWeb(), confirmFields(fields), rejectFields(fields), editField(field, newValue), bulkEnrich(clienteIds, options), confirmAll(), rejectAll(), shouldWarnCooldown (boolean based on lastEnrichedAt < 24h), lastEnrichedAt, refetch(). Auto-invalidates queries after mutations.",
+      "status": "completed",
+      "complexity": 8,
+      "blockedBy": [
+        "T-010",
+        "T-011",
+        "T-012",
+        "T-013"
+      ],
+      "blocks": [
+        "T-021",
+        "T-022",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-030"
+      ],
+      "subtasks": [
+        {
+          "title": "Define hook signature accepting clienteId | clienteIds[]",
+          "completed": true
+        },
+        {
+          "title": "Implement query: fetch GET /api/clientes/[id]/enrich",
+          "completed": true
+        },
+        {
+          "title": "Implement enrichAI mutation: POST with mode='ai'",
+          "completed": true
+        },
+        {
+          "title": "Implement enrichWeb mutation: POST with mode='web'",
+          "completed": true
+        },
+        {
+          "title": "Implement confirmFields/rejectFields mutations: PATCH",
+          "completed": true
+        },
+        {
+          "title": "Implement editField mutation: PATCH with action='edit'",
+          "completed": true
+        },
+        {
+          "title": "Implement bulkEnrich mutation: POST /api/admin/bulk-enrich",
+          "completed": true
+        },
+        {
+          "title": "Implement confirmAll/rejectAll convenience methods",
+          "completed": true
+        },
+        {
+          "title": "Add cooldown detection logic (shouldWarnCooldown)",
+          "completed": true
+        },
+        {
+          "title": "Configure React Query cache invalidation on mutations",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "hooks",
+        "react-query",
+        "frontend"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-015",
+      "title": "Create shared/DiffLine.tsx component",
+      "description": "Create src/components/enrichment/shared/DiffLine.tsx. A reusable component that shows a value diff: current value (red/strikethrough) → suggested value (green). Props: currentValue: string | null, suggestedValue: string, fieldName: string. Handle null/empty current values showing '(vacío)'. Light mode only, no dark: classes.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-017"
+      ],
+      "subtasks": [
+        {
+          "title": "Create component with current → suggested display",
+          "completed": true
+        },
+        {
+          "title": "Handle null/empty current values",
+          "completed": true
+        },
+        {
+          "title": "Style with red/green color coding",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-016",
+      "title": "Create shared/ConfidenceBadge.tsx component",
+      "description": "Create src/components/enrichment/shared/ConfidenceBadge.tsx. Shows a confidence percentage with color-coded badge. Props: score: number (0-1 or 0-100), size?: 'sm' | 'md'. Colors: red (<40%), orange (40-60%), yellow (60-80%), green (80%+). Display as percentage. Light mode only.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-017"
+      ],
+      "subtasks": [
+        {
+          "title": "Create badge component with score display",
+          "completed": true
+        },
+        {
+          "title": "Implement color thresholds",
+          "completed": true
+        },
+        {
+          "title": "Support sm/md sizes",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-017",
+      "title": "Create shared/FieldReviewCard.tsx component",
+      "description": "Create src/components/enrichment/shared/FieldReviewCard.tsx. Card component for reviewing a single enriched field. Props: fieldName, currentValue, suggestedValue, confidence, providers, status (pending/confirmed/rejected/edited), onConfirm, onReject, onEdit, isEditing, editValue, onEditChange, onEditSave. Uses DiffLine and ConfidenceBadge internally. Shows three action buttons: Aceptar, Rechazar, Editar. When editing, replaces suggested value with FieldEditInput. Light mode only.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-015",
+        "T-016"
+      ],
+      "blocks": [
+        "T-022"
+      ],
+      "subtasks": [
+        {
+          "title": "Create card layout with field name header",
+          "completed": true
+        },
+        {
+          "title": "Integrate DiffLine for value comparison",
+          "completed": true
+        },
+        {
+          "title": "Integrate ConfidenceBadge for score display",
+          "completed": true
+        },
+        {
+          "title": "Add three action buttons: Aceptar, Rechazar, Editar",
+          "completed": true
+        },
+        {
+          "title": "Handle editing state with inline input",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-018",
+      "title": "Create shared/FieldEditInput.tsx component",
+      "description": "Create src/components/enrichment/shared/FieldEditInput.tsx. Inline input for editing a suggested value before accepting. Props: value, onChange, onSave, onCancel, fieldType (text/email/phone/url). Renders an input field with the suggested value pre-filled, plus Save and Cancel buttons. Validates based on fieldType (email format, URL format, etc.). Light mode only.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-022"
+      ],
+      "subtasks": [
+        {
+          "title": "Create input component with pre-filled value",
+          "completed": true
+        },
+        {
+          "title": "Add Save/Cancel action buttons",
+          "completed": true
+        },
+        {
+          "title": "Add basic validation per fieldType",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-019",
+      "title": "Create shared/EnrichmentProgress.tsx component",
+      "description": "Create src/components/enrichment/shared/EnrichmentProgress.tsx. Progress indicator shown during enrichment execution. Props: isLoading, currentStep (e.g. 'Consultando OpenAI...'), totalProviders, completedProviders, fieldsFound. Shows a progress bar and status text. For bulk mode, also shows clientProgress (e.g. 'Procesando cliente 3 de 5...'). Light mode only.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-023"
+      ],
+      "subtasks": [
+        {
+          "title": "Create progress bar component",
+          "completed": true
+        },
+        {
+          "title": "Show provider progress (completed/total)",
+          "completed": true
+        },
+        {
+          "title": "Show bulk client progress when applicable",
+          "completed": true
+        },
+        {
+          "title": "Show fields found count",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-020",
+      "title": "Create shared/ProviderBadges.tsx component",
+      "description": "Create src/components/enrichment/shared/ProviderBadges.tsx. Displays badges for AI providers that contributed to the enrichment result. Props: providers: string[] (e.g. ['openai', 'gemini', 'grok']). Each provider shows as a small badge with name. Light mode only.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-006"
+      ],
+      "blocks": [
+        "T-022"
+      ],
+      "subtasks": [
+        {
+          "title": "Create badge list component",
+          "completed": true
+        },
+        {
+          "title": "Map provider names to display labels",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "shared"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-021",
+      "title": "Create EnrichmentForm.tsx: modal options form",
+      "description": "Create src/components/enrichment/EnrichmentForm.tsx. The form section of the EnrichmentModal. Props: onSubmitAI, onSubmitWeb, clientHasWebsite, defaultConfidenceThreshold, isLoading. Contains: AI model selector dropdown (OpenAI, Gemini, Grok, DeepSeek, Auto), search depth selector (Quick/Full), external API checkboxes (Hunter.io, SerpAPI, BuiltWith), confidence threshold input (pre-filled from settings default but editable). Two action buttons: 'Enriquecer IA' and 'Analizar Web' (disabled if client has no website). For bulk mode (multiple clients), website analysis button is hidden. Light mode only.",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-023"
+      ],
+      "subtasks": [
+        {
+          "title": "Create AI model selector dropdown",
+          "completed": true
+        },
+        {
+          "title": "Create search depth selector (Quick/Full)",
+          "completed": true
+        },
+        {
+          "title": "Create external API checkboxes",
+          "completed": true
+        },
+        {
+          "title": "Create confidence threshold input (editable)",
+          "completed": true
+        },
+        {
+          "title": "Add Enriquecer IA button",
+          "completed": true
+        },
+        {
+          "title": "Add Analizar Web button (disabled if no website)",
+          "completed": true
+        },
+        {
+          "title": "Handle bulk mode: hide web analysis button",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "modal"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-022",
+      "title": "Create EnrichmentReview.tsx: quick and detailed review modes",
+      "description": "Create src/components/enrichment/EnrichmentReview.tsx. Shows after enrichment completes. Props: fields (array of enriched fields with values, confidence, providers), onConfirm, onReject, onEdit, confidenceThreshold. Two modes togglable via buttons: Quick Mode (default): compact list with checkboxes, fields pre-selected if confidence > threshold, bulk actions 'Aceptar Seleccionados' and 'Rechazar Resto'. Detailed Mode: stepper navigation showing one FieldReviewCard at a time with Previous/Next buttons, dot indicators, and final summary screen showing all decisions. Uses FieldReviewCard, ProviderBadges. Light mode only.",
+      "status": "completed",
+      "complexity": 7,
+      "blockedBy": [
+        "T-014",
+        "T-017",
+        "T-018",
+        "T-020"
+      ],
+      "blocks": [
+        "T-023"
+      ],
+      "subtasks": [
+        {
+          "title": "Create mode toggle (Quick/Detailed)",
+          "completed": true
+        },
+        {
+          "title": "Implement Quick mode: checkbox list with pre-selection",
+          "completed": true
+        },
+        {
+          "title": "Implement Quick mode: bulk action buttons",
+          "completed": true
+        },
+        {
+          "title": "Implement Detailed mode: stepper navigation",
+          "completed": true
+        },
+        {
+          "title": "Implement Detailed mode: dot indicators",
+          "completed": true
+        },
+        {
+          "title": "Implement Detailed mode: edit flow with FieldEditInput",
+          "completed": true
+        },
+        {
+          "title": "Implement summary screen at end of detailed review",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "modal",
+        "review"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-023",
+      "title": "Create EnrichmentModal.tsx: main modal overlay for 1 or N clients",
+      "description": "Create src/components/enrichment/EnrichmentModal.tsx. The main modal overlay component. Props: isOpen, onClose, clienteIds: string[] (1 for individual, N for bulk), clienteNames: string[] (for display). Uses Headless UI Dialog or similar for modal. Layout: header with client name(s), EnrichmentForm, EnrichmentProgress (when loading), EnrichmentReview (when results arrive). Cooldown warning: if shouldWarnCooldown from hook, show confirmation dialog before proceeding. For bulk (N>1): show progress per client, no individual review (auto-apply or leave PENDING). Uses useEnrichment hook. Light mode only.",
+      "status": "completed",
+      "complexity": 7,
+      "blockedBy": [
+        "T-021",
+        "T-022",
+        "T-019"
+      ],
+      "blocks": [
+        "T-027",
+        "T-028",
+        "T-029"
+      ],
+      "subtasks": [
+        {
+          "title": "Create modal shell with Headless UI Dialog",
+          "completed": true
+        },
+        {
+          "title": "Display header with client name(s) or count",
+          "completed": true
+        },
+        {
+          "title": "Integrate EnrichmentForm",
+          "completed": true
+        },
+        {
+          "title": "Integrate EnrichmentProgress during loading",
+          "completed": true
+        },
+        {
+          "title": "Integrate EnrichmentReview when results arrive",
+          "completed": true
+        },
+        {
+          "title": "Implement cooldown warning dialog",
+          "completed": true
+        },
+        {
+          "title": "Handle bulk mode: progress per client, no review",
+          "completed": true
+        },
+        {
+          "title": "Handle close/cleanup on modal dismiss",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "modal"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-024",
+      "title": "Create EnrichmentSummary.tsx for client detail page",
+      "description": "Create src/components/enrichment/EnrichmentSummary.tsx. Displays confirmed and pending enriched fields on the client detail page. Props: clienteId. Uses useEnrichment hook to fetch latestEnrichment. Shows each field with its value, confidence badge, and status (confirmed/pending/rejected). Pending fields have a subtle highlight. If no enrichment exists, shows a prompt to enrich. Light mode only.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-027"
+      ],
+      "subtasks": [
+        {
+          "title": "Fetch latest enrichment data via hook",
+          "completed": true
+        },
+        {
+          "title": "Display confirmed fields with values and confidence",
+          "completed": true
+        },
+        {
+          "title": "Display pending fields with highlight",
+          "completed": true
+        },
+        {
+          "title": "Show empty state when no enrichment exists",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "detail-page"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-025",
+      "title": "Create WebsiteSummary.tsx for client detail page",
+      "description": "Create src/components/enrichment/WebsiteSummary.tsx. Displays website analysis summary on client detail page. Only rendered if client has a website URL (sitioWeb field). Props: clienteId. Uses useEnrichment hook to fetch websiteAnalysis. Shows: screenshots (desktop/mobile thumbnails), PageSpeed score with color indicator, SSL status, key SEO metrics, tech stack summary. Collapsible sections for detailed data. Light mode only.",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-027"
+      ],
+      "subtasks": [
+        {
+          "title": "Fetch website analysis via hook",
+          "completed": true
+        },
+        {
+          "title": "Display screenshots as thumbnails",
+          "completed": true
+        },
+        {
+          "title": "Display PageSpeed score with color indicator",
+          "completed": true
+        },
+        {
+          "title": "Display SSL status",
+          "completed": true
+        },
+        {
+          "title": "Display SEO metrics summary",
+          "completed": true
+        },
+        {
+          "title": "Display tech stack summary",
+          "completed": true
+        },
+        {
+          "title": "Add collapsible sections for details",
+          "completed": true
+        },
+        {
+          "title": "Only render when client has website URL",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "detail-page"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-026",
+      "title": "Create EnrichmentHistory.tsx timeline for client detail page",
+      "description": "Create src/components/enrichment/EnrichmentHistory.tsx. Shows a timeline of past enrichments on client detail page. Props: clienteId. Uses useEnrichment hook to fetch history array. Each entry shows: date/time, type (IA/Web), providers used (as ProviderBadges), fields found count, fields confirmed count. Entries ordered by date descending. Expandable entries to see field details of that specific enrichment. Light mode only.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-027"
+      ],
+      "subtasks": [
+        {
+          "title": "Fetch history via hook",
+          "completed": true
+        },
+        {
+          "title": "Render timeline with date, type, providers",
+          "completed": true
+        },
+        {
+          "title": "Show fields found/confirmed counts per entry",
+          "completed": true
+        },
+        {
+          "title": "Add expandable detail view per entry",
+          "completed": true
+        },
+        {
+          "title": "Handle empty history state",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "detail-page",
+        "history"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-027",
+      "title": "Integrate enrichment sections in client detail page",
+      "description": "Update src/app/clientes/[id]/page.tsx. Remove ClientInfoSearch and WebsiteAnalysisPanel imports and usage. Add: 'Enriquecer' button that opens EnrichmentModal, EnrichmentSummary section showing AI enrichment data, WebsiteSummary section (only if client has sitioWeb), EnrichmentHistory section showing timeline. Pass clienteId to all components. Ensure the EnrichmentModal receives a single-element array [clienteId].",
+      "status": "completed",
+      "complexity": 5,
+      "blockedBy": [
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026"
+      ],
+      "blocks": [
+        "T-031",
+        "T-032",
+        "T-033",
+        "T-035"
+      ],
+      "subtasks": [
+        {
+          "title": "Remove ClientInfoSearch import and usage",
+          "completed": true
+        },
+        {
+          "title": "Remove WebsiteAnalysisPanel import and usage",
+          "completed": true
+        },
+        {
+          "title": "Add 'Enriquecer' button with modal state",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentModal component",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentSummary section",
+          "completed": true
+        },
+        {
+          "title": "Add WebsiteSummary section (conditional on sitioWeb)",
+          "completed": true
+        },
+        {
+          "title": "Add EnrichmentHistory section",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "integration",
+        "pages",
+        "frontend"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-028",
+      "title": "Integrate EnrichmentModal as individual button in TablaClientes",
+      "description": "Update src/components/TablaClientes.tsx. Add an 'Enriquecer' button/icon in each row's action column that opens EnrichmentModal for that single client. Manage modal open/close state. Pass [clienteId] and [clienteName] to the modal. Replace any existing enrichment modal usage with the new EnrichmentModal.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-023"
+      ],
+      "blocks": [
+        "T-031",
+        "T-032",
+        "T-033",
+        "T-035"
+      ],
+      "subtasks": [
+        {
+          "title": "Add enrich button/icon to row actions",
+          "completed": true
+        },
+        {
+          "title": "Add modal state management (open, selectedClient)",
+          "completed": true
+        },
+        {
+          "title": "Render EnrichmentModal with single client",
+          "completed": true
+        },
+        {
+          "title": "Remove old enrichment modal usage",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "integration",
+        "table",
+        "frontend"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-029",
+      "title": "Add 'Enriquecer' option in bulk actions of TablaClientes",
+      "description": "Update src/components/TablaClientes.tsx. When multiple clients are selected, add an 'Enriquecer' button in the bulk actions bar (alongside existing bulk action buttons). Clicking it opens EnrichmentModal with the array of selected clienteIds and their names. The modal operates in bulk mode (form + progress, no individual review).",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-023"
+      ],
+      "blocks": [
+        "T-031",
+        "T-034"
+      ],
+      "subtasks": [
+        {
+          "title": "Add 'Enriquecer' button to bulk actions bar",
+          "completed": true
+        },
+        {
+          "title": "Collect selected client IDs and names",
+          "completed": true
+        },
+        {
+          "title": "Open EnrichmentModal in bulk mode",
+          "completed": true
+        },
+        {
+          "title": "Handle modal close and refresh table data",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "integration",
+        "table",
+        "bulk",
+        "frontend"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-030",
+      "title": "Adapt EnrichmentBadge to 1:N model",
+      "description": "Update src/components/enrichment/EnrichmentBadge.tsx. Currently it uses useAIEnrichmentData which fetches a single enrichment. Change to use the new useEnrichment hook or update the data fetching to get the latest enrichment from the 1:N array. The badge should show status based on the most recent enrichment record. Remove any dark mode classes.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-031"
+      ],
+      "subtasks": [
+        {
+          "title": "Switch from useAIEnrichmentData to new hook/query",
+          "completed": true
+        },
+        {
+          "title": "Read latest enrichment from 1:N response",
+          "completed": true
+        },
+        {
+          "title": "Remove dark mode classes",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "component",
+        "ui",
+        "refactor"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-031",
+      "title": "Delete legacy enrichment components",
+      "description": "Delete the following files that are now fully replaced: src/components/enrichment/ClientInfoSearch.tsx (replaced by EnrichmentModal + EnrichmentReview), src/components/enrichment/AIEnrichmentPanel.tsx (replaced by EnrichmentModal + EnrichmentReview), src/components/enrichment/EnrichmentPanel.tsx (the website one, replaced by WebsiteSummary), src/components/enrichment/WebsiteAnalysisPanel.tsx (replaced by WebsiteSummary + modal). Verify no remaining imports reference these files.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-027",
+        "T-028",
+        "T-029",
+        "T-030"
+      ],
+      "blocks": [
+        "T-036"
+      ],
+      "subtasks": [
+        {
+          "title": "Delete ClientInfoSearch.tsx",
+          "completed": true
+        },
+        {
+          "title": "Delete AIEnrichmentPanel.tsx",
+          "completed": true
+        },
+        {
+          "title": "Delete EnrichmentPanel.tsx (website)",
+          "completed": true
+        },
+        {
+          "title": "Delete WebsiteAnalysisPanel.tsx",
+          "completed": true
+        },
+        {
+          "title": "Search for and remove any remaining imports",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "deletion"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-032",
+      "title": "Delete legacy API endpoints",
+      "description": "Delete: src/app/api/enrichment/route.ts (website enrichment migrated to /api/clientes/[id]/enrich with mode:'web'), src/app/api/openai-search/route.ts (if exists, integrated into consensus service). Remove the directories if empty after deletion. Verify no remaining code references these endpoints.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-027",
+        "T-028"
+      ],
+      "blocks": [
+        "T-036"
+      ],
+      "subtasks": [
+        {
+          "title": "Delete /api/enrichment/route.ts and directory",
+          "completed": true
+        },
+        {
+          "title": "Delete /api/openai-search/route.ts and directory (if exists)",
+          "completed": true
+        },
+        {
+          "title": "Search for and update any remaining endpoint references",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "deletion",
+        "api"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-033",
+      "title": "Delete legacy hooks",
+      "description": "Delete: src/hooks/useAIEnrichment.ts (replaced by useEnrichment), the old src/hooks/useEnrichment.ts if it still exists as legacy (the new one replaces it), src/hooks/useBulkEnrichment.ts (replaced by useEnrichment). Verify no remaining imports reference these hooks.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-027",
+        "T-028",
+        "T-029"
+      ],
+      "blocks": [
+        "T-036"
+      ],
+      "subtasks": [
+        {
+          "title": "Delete useAIEnrichment.ts",
+          "completed": true
+        },
+        {
+          "title": "Delete old useEnrichment.ts (legacy)",
+          "completed": true
+        },
+        {
+          "title": "Delete useBulkEnrichment.ts",
+          "completed": true
+        },
+        {
+          "title": "Search for and remove any remaining imports",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "deletion",
+        "hooks"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-034",
+      "title": "Delete bulk-enrich admin settings page",
+      "description": "Delete src/app/admin/settings/bulk-enrich/page.tsx and its directory. Update src/components/admin/settings/SettingsSidebar.tsx to remove the bulk-enrich link. This functionality is now accessed via bulk actions in the clients table.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-029"
+      ],
+      "blocks": [
+        "T-036"
+      ],
+      "subtasks": [
+        {
+          "title": "Delete bulk-enrich page and directory",
+          "completed": true
+        },
+        {
+          "title": "Remove bulk-enrich link from SettingsSidebar",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "deletion",
+        "admin"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-035",
+      "title": "Remove all dark mode code from enrichment components",
+      "description": "Search all files in src/components/enrichment/ for dark: Tailwind classes and dark mode conditional logic. Remove all dark: class variants, dark mode theme toggles, and conditional dark mode styling. The application uses light mode only. Also check the new components created in this refactor to ensure none accidentally include dark mode code. Check EnrichmentBadge.tsx and QuotaStatus.tsx as well.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-027",
+        "T-028"
+      ],
+      "blocks": [
+        "T-036"
+      ],
+      "subtasks": [
+        {
+          "title": "Search for dark: classes in enrichment components",
+          "completed": true
+        },
+        {
+          "title": "Remove all dark: Tailwind classes",
+          "completed": true
+        },
+        {
+          "title": "Remove dark mode conditional logic",
+          "completed": true
+        },
+        {
+          "title": "Verify new components have no dark mode code",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "styling"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-036",
+      "title": "Verify build passes with no TypeScript errors",
+      "description": "Run npm run build and verify zero TypeScript errors. Fix any remaining type errors from removed fields, changed imports, or broken references. Run npm run lint to check for linting issues. This is the gate before functional verification.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-031",
+        "T-032",
+        "T-033",
+        "T-034",
+        "T-035"
+      ],
+      "blocks": [
+        "T-037",
+        "T-038",
+        "T-039",
+        "T-040",
+        "T-041"
+      ],
+      "subtasks": [
+        {
+          "title": "Run npm run build",
+          "completed": true
+        },
+        {
+          "title": "Fix any TypeScript errors",
+          "completed": true
+        },
+        {
+          "title": "Run npm run lint",
+          "completed": true
+        },
+        {
+          "title": "Fix any lint errors",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "build",
+        "typescript"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T15:00:00.000Z",
+        "completed": "2026-01-31T15:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-037",
+      "title": "Verify individual enrichment flow from client detail",
+      "description": "Functional verification: navigate to a client detail page, click 'Enriquecer' button, verify EnrichmentModal opens. Select AI model and options, click 'Enriquecer IA'. Verify progress shows during execution. Verify results appear in review mode. Test Quick mode: checkboxes pre-selected by threshold, bulk accept/reject. Test Detailed mode: stepper navigation, accept/reject/edit per field. Verify confirmed data appears in EnrichmentSummary. Verify new record appears in EnrichmentHistory.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Test modal opens from detail page",
+          "completed": true
+        },
+        {
+          "title": "Test AI enrichment with options form",
+          "completed": true
+        },
+        {
+          "title": "Test Quick review mode",
+          "completed": true
+        },
+        {
+          "title": "Test Detailed review mode with stepper",
+          "completed": true
+        },
+        {
+          "title": "Test edit value flow",
+          "completed": true
+        },
+        {
+          "title": "Verify EnrichmentSummary updates",
+          "completed": true
+        },
+        {
+          "title": "Verify EnrichmentHistory shows new entry",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "e2e",
+        "individual"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T17:30:00.000Z",
+        "completed": "2026-01-31T17:30:00.000Z"
+      }
+    },
+    {
+      "id": "T-038",
+      "title": "Verify table modal flow: individual and bulk",
+      "description": "Functional verification: in the clients table, click enrich button on a single row → verify modal opens for that client. Select multiple clients → verify 'Enriquecer' appears in bulk actions bar → click it → verify modal opens in bulk mode with client count. Verify bulk enrichment runs and shows per-client progress. Verify table data refreshes after modal closes.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Test individual enrich from table row",
+          "completed": true
+        },
+        {
+          "title": "Test bulk enrich button appears on multi-select",
+          "completed": true
+        },
+        {
+          "title": "Test bulk modal shows progress per client",
+          "completed": true
+        },
+        {
+          "title": "Verify table refreshes after enrichment",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "e2e",
+        "table",
+        "bulk"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T16:00:00.000Z",
+        "completed": "2026-01-31T16:00:00.000Z"
+      }
+    },
+    {
+      "id": "T-039",
+      "title": "Verify enrichment history creates new records",
+      "description": "Functional verification: enrich a client, verify a new ClienteEnrichment record is created. Enrich the same client again, verify a SECOND record is created (not overwritten). Verify both appear in EnrichmentHistory timeline. Verify GET /api/clientes/[id]/enrich returns history array with both entries. Verify latestEnrichment is the most recent one.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Enrich client and verify record created",
+          "completed": true
+        },
+        {
+          "title": "Enrich same client again and verify second record",
+          "completed": true
+        },
+        {
+          "title": "Verify both appear in history timeline",
+          "completed": true
+        },
+        {
+          "title": "Verify API returns correct history array",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "e2e",
+        "history"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T17:30:00.000Z",
+        "completed": "2026-01-31T17:30:00.000Z"
+      }
+    },
+    {
+      "id": "T-040",
+      "title": "Verify cooldown warning and edit value flows",
+      "description": "Functional verification: enrich a client, then immediately try to enrich again. Verify cooldown warning appears ('Ya se enriquecio hace X minutos'). Verify user can confirm and proceed. Verify user can cancel. Test edit value flow: in detailed review mode, click 'Editar' on a field, modify the value, save, verify the edited value is applied to the client (not the AI-suggested value).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Test cooldown warning appears on recent re-enrichment",
+          "completed": true
+        },
+        {
+          "title": "Test confirm proceeds with enrichment",
+          "completed": true
+        },
+        {
+          "title": "Test cancel aborts enrichment",
+          "completed": true
+        },
+        {
+          "title": "Test edit value modifies suggested value",
+          "completed": true
+        },
+        {
+          "title": "Verify edited value saved to client",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "e2e",
+        "cooldown",
+        "edit"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T17:30:00.000Z",
+        "completed": "2026-01-31T17:30:00.000Z"
+      }
+    },
+    {
+      "id": "T-041",
+      "title": "Verify website analysis gating and EnrichmentBadge",
+      "description": "Functional verification: for a client WITHOUT a website URL, verify the 'Analizar Web' button is disabled in the modal and WebsiteSummary is not rendered on detail page. For a client WITH a website URL, verify 'Analizar Web' is enabled, analysis runs successfully, and results show in WebsiteSummary. Verify EnrichmentBadge in the clients table shows correct status from the latest (most recent) enrichment record.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Test client without website: web button disabled",
+          "completed": true
+        },
+        {
+          "title": "Test client without website: WebsiteSummary hidden",
+          "completed": true
+        },
+        {
+          "title": "Test client with website: web analysis runs",
+          "completed": true
+        },
+        {
+          "title": "Test client with website: WebsiteSummary shows results",
+          "completed": true
+        },
+        {
+          "title": "Verify EnrichmentBadge shows latest enrichment status",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "verification",
+        "e2e",
+        "website",
+        "badge"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-01-31T14:30:00.000Z",
+        "started": "2026-01-31T16:00:00.000Z",
+        "completed": "2026-01-31T16:00:00.000Z"
+      }
+    }
+  ],
+  "summary": {
+    "total": 41,
+    "pending": 0,
+    "inProgress": 0,
+    "completed": 41,
+    "blocked": 0,
+    "averageComplexity": 3.9
+  }
+}
