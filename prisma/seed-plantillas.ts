@@ -1,20 +1,18 @@
 import { PrismaClient } from '@prisma/client';
 
-const prisma = new PrismaClient();
+/**
+ * Create the default contact templates (email + WhatsApp).
+ * Requires at least one ADMIN user to exist.
+ * Exported so the global seed.ts can call it.
+ */
+export async function seedPlantillas(prisma: PrismaClient) {
+  console.log('\n📧 Creando plantillas de contacto...');
 
-async function main() {
-  console.log('📧 Creando plantillas de contacto...\n');
-
-  // Get admin user for creadoPorId
   const admin = await prisma.user.findFirst({ where: { role: 'ADMIN' } });
   if (!admin) {
-    console.error('❌ No se encontró un usuario ADMIN. Ejecuta el seed principal primero.');
-    process.exit(1);
+    console.error('❌ No se encontró un usuario ADMIN. Ejecuta el seed de usuarios primero.');
+    return;
   }
-
-  // Clean existing plantillas
-  console.log('🧹 Limpiando plantillas existentes...');
-  await prisma.plantillaContacto.deleteMany({});
 
   const plantillas = [
     // ═══════════════════════════════════════════════════
@@ -400,21 +398,23 @@ Respondé "Me interesa" y coordinamos. 📅
     console.log(`  ✅ ${plantilla.nombre}`);
   }
 
-  console.log(`\n🎉 ¡${plantillas.length} plantillas creadas exitosamente!`);
-
-  // Summary
   const emailCount = plantillas.filter(p => p.canal === 'EMAIL').length;
   const waCount = plantillas.filter(p => p.canal === 'WHATSAPP').length;
-  console.log(`\n📊 Resumen:`);
-  console.log(`   📧 ${emailCount} plantillas de Email`);
-  console.log(`   💬 ${waCount} plantillas de WhatsApp`);
+  console.log(`✅ Plantillas: ${plantillas.length} creadas (${emailCount} email, ${waCount} WhatsApp)`);
 }
 
-main()
-  .catch((e) => {
-    console.error('❌ Error:', e);
-    process.exit(1);
-  })
-  .finally(async () => {
-    await prisma.$disconnect();
-  });
+// ─── Standalone runner ──────────────────────────────────────────────
+// Allows running: npx tsx prisma/seed-plantillas.ts
+if (require.main === module) {
+  const prisma = new PrismaClient();
+  (async () => {
+    console.log('🧹 Limpiando plantillas existentes...');
+    await prisma.plantillaContacto.deleteMany({});
+    await seedPlantillas(prisma);
+  })()
+    .catch((e) => {
+      console.error('❌ Error:', e);
+      process.exit(1);
+    })
+    .finally(() => prisma.$disconnect());
+}
