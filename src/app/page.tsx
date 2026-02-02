@@ -21,9 +21,10 @@ export default async function Home() {
 
   // Obtener métricas del dashboard
   const [totalClientes, clientesActivos, actividadesHoy, clientesHoy, actividadesRecientes] = await Promise.all([
-    prisma.cliente.count(),
+    prisma.cliente.count({ where: { deletedAt: null } }),
     prisma.cliente.count({
       where: {
+        deletedAt: null,
         estado: {
           not: 'FINALIZADO'
         }

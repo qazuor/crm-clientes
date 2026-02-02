@@ -8,8 +8,8 @@ import {
   successResponse,
   validationErrorResponse,
   errorResponse,
-  serverErrorResponse,
   unauthorizedResponse,
+  handlePrismaError,
 } from '@/lib/api-response'
 import {
   registrarCambioEstado,
@@ -81,13 +81,20 @@ export async function POST(request: NextRequest) {
         }),
       ])
 
-      // Log activity for each client
-      for (const cliente of clientes) {
-        await registrarClienteEliminado(
-          cliente.id,
-          session.user.id,
-          cliente.nombre
-        )
+      // Log activity for each client (non-critical, wrapped in try-catch)
+      try {
+        for (const cliente of clientes) {
+          await registrarClienteEliminado(
+            cliente.id,
+            session.user.id,
+            cliente.nombre
+          )
+        }
+      } catch (activityError) {
+        logger.warn('Failed to log bulk delete activities', {
+          error: activityError instanceof Error ? activityError.message : String(activityError),
+          clientCount: clientes.length,
+        })
       }
 
       logger.info('Bulk delete', { count: validIds.length, userId: session.user.id })
@@ -104,16 +111,24 @@ export async function POST(request: NextRequest) {
         data: { estado: data.estado, fechaModific: new Date() },
       })
 
-      for (const cliente of clientes) {
-        if (cliente.estado !== data.estado) {
-          await registrarCambioEstado(
-            cliente.id,
-            session.user.id,
-            cliente.nombre,
-            cliente.estado,
-            data.estado
-          )
+      // Log activity for each changed client (non-critical)
+      try {
+        for (const cliente of clientes) {
+          if (cliente.estado !== data.estado) {
+            await registrarCambioEstado(
+              cliente.id,
+              session.user.id,
+              cliente.nombre,
+              cliente.estado,
+              data.estado
+            )
+          }
         }
+      } catch (activityError) {
+        logger.warn('Failed to log bulk estado change activities', {
+          error: activityError instanceof Error ? activityError.message : String(activityError),
+          clientCount: clientes.length,
+        })
       }
 
       logger.info('Bulk change estado', { count: validIds.length, estado: data.estado, userId: session.user.id })
@@ -130,16 +145,24 @@ export async function POST(request: NextRequest) {
         data: { prioridad: data.prioridad, fechaModific: new Date() },
       })
 
-      for (const cliente of clientes) {
-        if (cliente.prioridad !== data.prioridad) {
-          await registrarCambioPrioridad(
-            cliente.id,
-            session.user.id,
-            cliente.nombre,
-            cliente.prioridad,
-            data.prioridad
-          )
+      // Log activity for each changed client (non-critical)
+      try {
+        for (const cliente of clientes) {
+          if (cliente.prioridad !== data.prioridad) {
+            await registrarCambioPrioridad(
+              cliente.id,
+              session.user.id,
+              cliente.nombre,
+              cliente.prioridad,
+              data.prioridad
+            )
+          }
         }
+      } catch (activityError) {
+        logger.warn('Failed to log bulk prioridad change activities', {
+          error: activityError instanceof Error ? activityError.message : String(activityError),
+          clientCount: clientes.length,
+        })
       }
 
       logger.info('Bulk change prioridad', { count: validIds.length, prioridad: data.prioridad, userId: session.user.id })
@@ -152,6 +175,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     logger.error('Error in bulk operation', error instanceof Error ? error : new Error(String(error)))
-    return serverErrorResponse(error instanceof Error ? error : undefined)
+    return handlePrismaError(error)
   }
 }

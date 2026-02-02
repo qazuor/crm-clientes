@@ -9,6 +9,7 @@ import {
   serverErrorResponse,
   unauthorizedResponse,
   notFoundResponse,
+  handlePrismaError,
 } from '@/lib/api-response'
 import {
   registrarClienteEditado,
@@ -163,7 +164,7 @@ export async function PUT(
 
   } catch (error) {
     logger.error('Error updating client', error instanceof Error ? error : new Error(String(error)))
-    return serverErrorResponse(error instanceof Error ? error : undefined)
+    return handlePrismaError(error)
   }
 }
 
@@ -216,6 +217,6 @@ export async function DELETE(
 
   } catch (error) {
     logger.error('Error deleting client', error instanceof Error ? error : new Error(String(error)))
-    return serverErrorResponse(error instanceof Error ? error : undefined)
+    return handlePrismaError(error)
   }
 }

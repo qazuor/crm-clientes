@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { registrarClienteCreado } from '@/lib/actividades-automaticas'
 import { logger } from '@/lib/logger'
-import { EstadoCliente, PrioridadCliente, FuenteCliente, type Prisma } from '@prisma/client'
+import { Prisma, EstadoCliente, PrioridadCliente, FuenteCliente } from '@prisma/client'
 import {
   ClienteFiltersSchema,
   CreateClienteDTOSchema,
@@ -13,11 +13,17 @@ import {
   validationErrorResponse,
   serverErrorResponse,
   unauthorizedResponse,
+  handlePrismaError,
 } from '@/lib/api-response'
 
 // GET /api/clientes - Obtener lista de clientes
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session) {
+      return unauthorizedResponse()
+    }
+
     const { searchParams } = new URL(request.url)
 
     // Parse and validate query params
@@ -142,6 +148,6 @@ export async function POST(request: NextRequest) {
 
   } catch (error) {
     logger.error('Error creating client', error instanceof Error ? error : new Error(String(error)))
-    return serverErrorResponse(error instanceof Error ? error : undefined)
+    return handlePrismaError(error)
   }
 }

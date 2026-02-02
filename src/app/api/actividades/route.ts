@@ -18,6 +18,11 @@ import {
 // GET /api/actividades - Obtener lista de actividades
 export async function GET(request: NextRequest) {
   try {
+    const session = await auth()
+    if (!session) {
+      return unauthorizedResponse()
+    }
+
     const { searchParams } = new URL(request.url)
 
     // Parse and validate query params
@@ -37,7 +42,9 @@ export async function GET(request: NextRequest) {
     const filters = validationResult.data
 
     // Build where clause with proper Prisma typing
-    const where: Prisma.ActividadWhereInput = {}
+    const where: Prisma.ActividadWhereInput = {
+      deletedAt: null, // Exclude soft-deleted activities
+    }
 
     if (filters.clienteId) where.clienteId = filters.clienteId
     if (filters.usuarioId) where.usuarioId = filters.usuarioId
@@ -113,37 +120,37 @@ export async function POST(request: NextRequest) {
       return notFoundResponse('Cliente')
     }
 
-    const actividad = await prisma.actividad.create({
-      data: {
-        ...data,
-        fecha: new Date(),
-        usuarioId: session.user.id,
-      },
-      include: {
-        cliente: {
-          select: {
-            id: true,
-            nombre: true,
-            email: true,
-          }
+    const [actividad] = await prisma.$transaction([
+      prisma.actividad.create({
+        data: {
+          ...data,
+          fecha: new Date(),
+          usuarioId: session.user.id,
         },
-        usuario: {
-          select: {
-            id: true,
-            name: true,
+        include: {
+          cliente: {
+            select: {
+              id: true,
+              nombre: true,
+              email: true,
+            }
+          },
+          usuario: {
+            select: {
+              id: true,
+              name: true,
+            }
           }
         }
-      }
-    })
-
-    // Update client's last contact date
-    await prisma.cliente.update({
-      where: { id: data.clienteId },
-      data: {
-        ultimoContacto: new Date(),
-        fechaModific: new Date(),
-      }
-    })
+      }),
+      prisma.cliente.update({
+        where: { id: data.clienteId },
+        data: {
+          ultimoContacto: new Date(),
+          fechaModific: new Date(),
+        }
+      }),
+    ])
 
     logger.info('Activity created', { actividadId: actividad.id, clienteId: data.clienteId })
 
