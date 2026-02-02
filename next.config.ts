@@ -34,14 +34,12 @@ const securityHeaders = [
     key: 'Content-Security-Policy',
     value: [
       "default-src 'self'",
-      // unsafe-inline needed for Next.js style injection; unsafe-eval only in dev
-      process.env.NODE_ENV === 'development'
-        ? "script-src 'self' 'unsafe-eval' 'unsafe-inline'"
-        : "script-src 'self' 'unsafe-inline'",
+      "script-src 'self' 'unsafe-eval' 'unsafe-inline' https://vercel.live",
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com https://*.blob.vercel-storage.com",
+      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com https://*.blob.vercel-storage.com https://vercel.live https://*.pusher.com wss://*.pusher.com",
+      "frame-src https://vercel.live",
       "frame-ancestors 'self'",
       "base-uri 'self'",
       "form-action 'self'"
