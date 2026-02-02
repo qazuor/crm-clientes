@@ -14,8 +14,17 @@ const geistMono = Geist_Mono({
 });
 
 export const metadata: Metadata = {
-  title: "CRM Clientes",
-  description: "Sistema CRM para gestión de clientes",
+  title: {
+    default: 'CRM Clientes',
+    template: '%s | CRM Clientes',
+  },
+  description: 'Sistema CRM para gestion de clientes',
+  robots: { index: false, follow: false },
+  openGraph: {
+    title: 'CRM Clientes',
+    description: 'Sistema CRM para gestion de clientes',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

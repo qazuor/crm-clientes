@@ -2,6 +2,7 @@
 
 import React, { Component, ErrorInfo, ReactNode } from 'react';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
+import { captureException } from '@/lib/error-reporting';
 
 interface Props {
   children: ReactNode;
@@ -31,11 +32,9 @@ export class ErrorBoundary extends Component<Props, State> {
   componentDidCatch(error: Error, errorInfo: ErrorInfo): void {
     this.setState({ errorInfo });
 
-    // Log to error reporting service in production
-    if (process.env.NODE_ENV === 'production') {
-      // TODO: Send to error reporting service like Sentry
-      // logErrorToService(error, errorInfo);
-    }
+    captureException(error, {
+      componentStack: errorInfo.componentStack ?? undefined,
+    });
   }
 
   handleReset = (): void => {
@@ -53,11 +52,11 @@ export class ErrorBoundary extends Component<Props, State> {
       }
 
       return (
-        <div className="min-h-[400px] flex items-center justify-center p-8">
+        <div className="min-h-[400px] flex items-center justify-center p-8" role="alert" aria-live="assertive">
           <div className="max-w-md w-full bg-white rounded-lg shadow-lg border border-red-200 p-6">
             <div className="flex items-center space-x-3 mb-4">
               <div className="flex-shrink-0">
-                <ExclamationTriangleIcon className="h-8 w-8 text-red-500" />
+                <ExclamationTriangleIcon className="h-8 w-8 text-red-500" aria-hidden="true" />
               </div>
               <div>
                 <h2 className="text-lg font-semibold text-gray-900">

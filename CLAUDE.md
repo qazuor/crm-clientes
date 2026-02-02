@@ -35,7 +35,7 @@ npx prisma generate      # Regenerate Prisma client after schema changes
 - **Language**: TypeScript (strict mode)
 - **Database**: PostgreSQL (dev via Docker on port 5437, prod via Vercel)
 - **ORM**: Prisma 5.22
-- **Auth**: NextAuth v5 (beta) with credentials provider, JWT sessions
+- **Auth**: Better Auth with credentials (email/password), session-based (cookies + DB)
 - **Styling**: TailwindCSS 4 with Headless UI and Radix primitives
 - **Data Fetching**: TanStack React Query + React Table
 
@@ -48,7 +48,7 @@ src/
 │   │   ├── clientes/      # Client CRUD endpoints
 │   │   ├── actividades/   # Activity logging
 │   │   ├── enrichment/    # Client enrichment (screenshots, PageSpeed)
-│   │   └── auth/          # NextAuth routes
+│   │   └── auth/          # Better Auth routes
 │   ├── clientes/          # Client management pages
 │   │   └── [id]/          # Dynamic client routes (detail, edit, activities)
 │   └── admin/             # Admin section
@@ -56,8 +56,8 @@ src/
 │   ├── ui/               # Base UI (Button, Toggle)
 │   └── enrichment/       # Enrichment-specific components
 ├── lib/                   # Core utilities
-│   ├── auth.ts           # NextAuth session helper
-│   ├── auth.config.ts    # Auth configuration
+│   ├── auth.ts           # Better Auth server instance + auth() wrapper
+│   ├── auth-client.ts    # Better Auth client (for React components)
 │   ├── prisma.ts         # Prisma singleton
 │   ├── screenshot-service.ts   # Website screenshot capture
 │   ├── pagespeed-service.ts    # PageSpeed analysis
@@ -70,7 +70,7 @@ src/
 - **User**: Authentication with roles (ADMIN, MANAGER, AGENT)
 - **Cliente**: Core entity with contact info, social profiles, enrichment data (JSON fields for websiteMetrics, techStack, socialProfiles)
 - **Actividad**: Activity tracking linked to clients and users
-- **Account/Session**: NextAuth tables for auth
+- **Account/Session/Verification**: Better Auth tables for auth
 
 ### Key Patterns
 - Server Components by default, `'use client'` for interactive UI
@@ -94,8 +94,8 @@ Required in `.env`:
 ```
 DATABASE_URL="postgresql://user:password@localhost:5437/crm_clientes"
 DIRECT_URL="postgresql://user:password@localhost:5437/crm_clientes"
-NEXTAUTH_SECRET="your-secret"
-NEXTAUTH_URL="http://localhost:4500"
+BETTER_AUTH_SECRET="your-secret-at-least-32-chars"
+BETTER_AUTH_URL="http://localhost:4500"
 OPENAI_API_KEY="sk-..."  # For AI features
 ```
 
@@ -118,7 +118,10 @@ All core types are in `src/types/index.ts`:
 
 ## Authentication
 
+- **Library**: Better Auth with Prisma adapter
 - Login page: `/auth/login`
 - Default dev users seeded with password "123456"
-- JWT sessions valid for 30 days
-- Protected routes via middleware
+- Session-based auth (cookies + DB), 30-day expiry
+- Protected routes via middleware (`src/middleware.ts`)
+- Server-side session: `import { auth } from '@/lib/auth'` then `const session = await auth()`
+- Client-side auth: `import { authClient } from '@/lib/auth-client'`

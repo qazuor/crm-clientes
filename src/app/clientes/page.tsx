@@ -1,3 +1,4 @@
+import type { Metadata } from 'next';
 import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
@@ -10,6 +11,11 @@ import {
 import { Pagination } from '@/components/Pagination';
 import { FiltrosAvanzados } from '@/components/FiltrosAvanzados';
 import { TablaClientes } from '@/components/TablaClientes';
+
+export const metadata: Metadata = {
+  title: 'Clientes',
+  description: 'Gestion de base de datos de clientes',
+};
 
 interface SearchParams {
   search?: string;
