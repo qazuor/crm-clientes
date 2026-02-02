@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { UpdatePlantillaSchema } from '@/lib/validations/plantilla';
 import {
   successResponse,
@@ -51,7 +52,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
     const session = await auth();
     if (!session) return unauthorizedResponse();
 
-    if (session.user.role !== 'ADMIN') {
+    if (!isAdmin(session.user.role)) {
       return errorResponse('Solo administradores pueden editar plantillas', { status: 403, code: 'FORBIDDEN' });
     }
 
@@ -106,7 +107,7 @@ export async function DELETE(_request: NextRequest, { params }: RouteParams) {
     const session = await auth();
     if (!session) return unauthorizedResponse();
 
-    if (session.user.role !== 'ADMIN') {
+    if (!isAdmin(session.user.role)) {
       return errorResponse('Solo administradores pueden eliminar plantillas', { status: 403, code: 'FORBIDDEN' });
     }
 

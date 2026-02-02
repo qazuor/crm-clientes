@@ -1,15 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { ApiKeyService } from '@/lib/services/api-key-service';
 import { updateApiKeySchema } from '@/lib/validations/api-key';
+import { logAudit } from '@/lib/audit';
 import type { ApiKeyResponse } from '@/types/enrichment';
-
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
+import type { ApiResponse } from '@/types';
 
 interface RouteParams {
   params: Promise<{ id: string }>;
@@ -23,7 +20,7 @@ export async function GET(
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -45,7 +42,7 @@ export async function GET(
       data: key,
     });
   } catch (error) {
-    console.error('Error fetching API key:', error);
+    logger.error('Error fetching API key', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al obtener la API key' },
       { status: 500 }
@@ -61,7 +58,7 @@ export async function PUT(
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -95,13 +92,21 @@ export async function PUT(
 
     const key = await ApiKeyService.update(id, validation.data);
 
+    await logAudit(
+      'api_key.update',
+      session.user.id,
+      'ApiKey',
+      id,
+      `Provider: ${existing.provider}`
+    );
+
     return NextResponse.json({
       success: true,
       data: key,
       message: 'API key actualizada exitosamente',
     });
   } catch (error) {
-    console.error('Error updating API key:', error);
+    logger.error('Error updating API key', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al actualizar la API key' },
       { status: 500 }
@@ -117,7 +122,7 @@ export async function DELETE(
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -137,12 +142,20 @@ export async function DELETE(
 
     await ApiKeyService.delete(id);
 
+    await logAudit(
+      'api_key.delete',
+      session.user.id,
+      'ApiKey',
+      id,
+      `Provider: ${existing.provider}`
+    );
+
     return NextResponse.json({
       success: true,
       message: 'API key eliminada exitosamente',
     });
   } catch (error) {
-    console.error('Error deleting API key:', error);
+    logger.error('Error deleting API key', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al eliminar la API key' },
       { status: 500 }

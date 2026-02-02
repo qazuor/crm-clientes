@@ -1,6 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
+import { isAdmin } from '@/lib/rbac';
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { SettingsSidebar } from '@/components/admin/settings/SettingsSidebar';
 
@@ -21,7 +22,7 @@ export default async function SettingsLayout({
   }
 
   // Only admins can access settings
-  if (session.user.role !== 'ADMIN') {
+  if (!isAdmin(session.user.role)) {
     redirect('/');
   }
 

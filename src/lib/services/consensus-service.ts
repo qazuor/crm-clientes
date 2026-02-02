@@ -328,7 +328,7 @@ export class ConsensusService {
           };
         }
       } catch (error) {
-        console.error('Consensus AI call failed:', error);
+        logger.error('Consensus AI call failed', error instanceof Error ? error : new Error(String(error)));
       }
     }
 

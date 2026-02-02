@@ -1,22 +1,19 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { ApiKeyService } from '@/lib/services/api-key-service';
 import { createApiKeySchema } from '@/lib/validations/api-key';
+import { logAudit } from '@/lib/audit';
 import type { ApiKeyResponse, ApiKeyProvider } from '@/types/enrichment';
-
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
+import type { ApiResponse } from '@/types';
 
 // GET /api/admin/api-keys - List all API keys
 export async function GET(): Promise<NextResponse<ApiResponse<ApiKeyResponse[]>>> {
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -30,7 +27,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<ApiKeyResponse[]>>
       data: keys,
     });
   } catch (error) {
-    console.error('Error fetching API keys:', error);
+    logger.error('Error fetching API keys', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al obtener las API keys' },
       { status: 500 }
@@ -45,7 +42,7 @@ export async function POST(
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -83,6 +80,14 @@ export async function POST(
       enabled: validation.data.enabled,
     });
 
+    await logAudit(
+      'api_key.create',
+      session.user.id,
+      'ApiKey',
+      key.id,
+      `Provider: ${validation.data.provider}`
+    );
+
     return NextResponse.json(
       {
         success: true,
@@ -92,7 +97,7 @@ export async function POST(
       { status: 201 }
     );
   } catch (error) {
-    console.error('Error creating API key:', error);
+    logger.error('Error creating API key', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al crear la API key' },
       { status: 500 }

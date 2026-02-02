@@ -5,6 +5,7 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
 import { NotificationService } from '@/lib/services/notification-service';
 
 export async function POST(request: NextRequest) {
@@ -33,7 +34,7 @@ export async function POST(request: NextRequest) {
       { status: 400 }
     );
   } catch (error) {
-    console.error('Mark notification read error:', error);
+    logger.error('Mark notification read error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error al marcar notificacion' },
       { status: 500 }

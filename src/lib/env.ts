@@ -10,11 +10,14 @@ const envSchema = z.object({
   DIRECT_URL: z.string().optional(),
 
   // Authentication
-  NEXTAUTH_SECRET: z.string().min(32, 'NEXTAUTH_SECRET must be at least 32 characters'),
-  NEXTAUTH_URL: z.string().url().optional(),
+  BETTER_AUTH_SECRET: z.string().min(32, 'BETTER_AUTH_SECRET must be at least 32 characters'),
+  BETTER_AUTH_URL: z.string().url().optional(),
 
   // Vercel Blob (optional in dev)
   BLOB_READ_WRITE_TOKEN: z.string().optional(),
+
+  // Cron secret for Vercel Cron auth (optional)
+  CRON_SECRET: z.string().optional(),
 
   // OpenAI (optional)
   OPENAI_API_KEY: z.string().optional(),
@@ -61,16 +64,23 @@ try {
     }
 
     // Don't throw in build time (Vercel might not have all env vars during build)
-    if (process.env.VERCEL && process.env.VERCEL_ENV === 'production') {
-      // Use defaults for non-critical vars in Vercel build
+    if (process.env.VERCEL) {
+      // During Vercel build, critical secrets may not be available yet.
+      // They MUST be set as runtime env vars in the Vercel dashboard.
+      if (!process.env.DATABASE_URL) {
+        console.warn('⚠️ DATABASE_URL not set - this is only acceptable during build phase');
+      }
+      if (!process.env.BETTER_AUTH_SECRET) {
+        console.warn('⚠️ BETTER_AUTH_SECRET not set - this is only acceptable during build phase');
+      }
       env = {
         DATABASE_URL: process.env.DATABASE_URL || '',
-        NEXTAUTH_SECRET: process.env.NEXTAUTH_SECRET || 'build-time-placeholder-will-be-replaced',
+        BETTER_AUTH_SECRET: process.env.BETTER_AUTH_SECRET || '',
         QUOTA_SCREENSHOTS_DAILY: 33,
         QUOTA_PAGESPEED_DAILY: 800,
         QUOTA_SERPAPI_DAILY: 3,
         QUOTA_BUILTWITH_DAILY: 166,
-        LOG_LEVEL: 'info',
+        LOG_LEVEL: 'warn',
         NODE_ENV: 'production',
       } as Env;
     } else {
@@ -105,8 +115,8 @@ export function hasVercelBlob(): boolean {
 }
 
 export function getBaseUrl(): string {
-  if (env.NEXTAUTH_URL) {
-    return env.NEXTAUTH_URL;
+  if (env.BETTER_AUTH_URL) {
+    return env.BETTER_AUTH_URL;
   }
   if (env.VERCEL_URL) {
     return `https://${env.VERCEL_URL}`;
@@ -116,5 +126,5 @@ export function getBaseUrl(): string {
 
 // Export individual env vars for convenience
 export const DATABASE_URL = env.DATABASE_URL;
-export const NEXTAUTH_SECRET = env.NEXTAUTH_SECRET;
+export const BETTER_AUTH_SECRET = env.BETTER_AUTH_SECRET;
 export const OPENAI_API_KEY = env.OPENAI_API_KEY;

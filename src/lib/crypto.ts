@@ -1,5 +1,5 @@
 // AES-256-GCM encryption for API keys
-// Uses NEXTAUTH_SECRET as the base for key derivation
+// Uses BETTER_AUTH_SECRET as the base for key derivation
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
 
@@ -7,15 +7,19 @@ const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
 const AUTH_TAG_LENGTH = 16;
 const KEY_LENGTH = 32; // 256 bits
-const SALT = 'crm-api-keys-salt'; // Static salt for consistency
+const DEFAULT_SALT = 'crm-api-keys-salt';
+
+function getSalt(): string {
+  return process.env.ENCRYPTION_SALT || DEFAULT_SALT;
+}
 
 function getEncryptionKey(): Buffer {
-  const secret = process.env.NEXTAUTH_SECRET;
+  const secret = process.env.BETTER_AUTH_SECRET;
   if (!secret) {
-    throw new Error('NEXTAUTH_SECRET is required for encryption');
+    throw new Error('BETTER_AUTH_SECRET is required for encryption');
   }
-  // Derive a 256-bit key using scrypt
-  return scryptSync(secret, SALT, KEY_LENGTH);
+  // Derive a 256-bit key using scrypt with deployment-specific salt
+  return scryptSync(secret, getSalt(), KEY_LENGTH);
 }
 
 /**

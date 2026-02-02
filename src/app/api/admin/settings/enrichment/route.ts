@@ -1,22 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { SettingsService } from '@/lib/services/settings-service';
 import { enrichmentSettingsSchema } from '@/lib/validations/enrichment-settings';
 import type { EnrichmentSettings } from '@/types/enrichment';
-
-interface ApiResponse<T = unknown> {
-  success: boolean;
-  data?: T;
-  message?: string;
-  error?: string;
-}
+import type { ApiResponse } from '@/types';
 
 // GET /api/admin/settings/enrichment - Get enrichment settings
 export async function GET(): Promise<NextResponse<ApiResponse<EnrichmentSettings>>> {
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -30,7 +26,7 @@ export async function GET(): Promise<NextResponse<ApiResponse<EnrichmentSettings
       data: settings,
     });
   } catch (error) {
-    console.error('Error fetching enrichment settings:', error);
+    logger.error('Error fetching enrichment settings', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al obtener la configuracion' },
       { status: 500 }
@@ -45,7 +41,7 @@ export async function PUT(
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -75,7 +71,7 @@ export async function PUT(
       message: 'Configuracion actualizada exitosamente',
     });
   } catch (error) {
-    console.error('Error updating enrichment settings:', error);
+    logger.error('Error updating enrichment settings', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al actualizar la configuracion' },
       { status: 500 }
@@ -88,7 +84,7 @@ export async function POST(): Promise<NextResponse<ApiResponse<EnrichmentSetting
   try {
     const session = await auth();
 
-    if (!session || session.user.role !== 'ADMIN') {
+    if (!session || !isAdmin(session.user.role)) {
       return NextResponse.json(
         { success: false, error: 'No autorizado' },
         { status: 401 }
@@ -103,7 +99,7 @@ export async function POST(): Promise<NextResponse<ApiResponse<EnrichmentSetting
       message: 'Configuracion restaurada a valores por defecto',
     });
   } catch (error) {
-    console.error('Error resetting enrichment settings:', error);
+    logger.error('Error resetting enrichment settings', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { success: false, error: 'Error al restaurar la configuracion' },
       { status: 500 }

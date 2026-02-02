@@ -1,4 +1,5 @@
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import { TipoActividad } from '@prisma/client';
 
 interface RegistrarActividadParams {
@@ -32,7 +33,7 @@ export async function registrarActividadAutomatica({
       }
     });
   } catch (error) {
-    console.error('Error registrando actividad automática:', error);
+    logger.error('Error registrando actividad automática', error instanceof Error ? error : new Error(String(error)));
     // No lanzamos el error para evitar interrumpir el flujo principal
   }
 }

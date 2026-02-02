@@ -7,6 +7,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { logger } from '@/lib/logger';
 import { WebsiteAnalysisService } from '@/lib/services/website-analysis-service';
 
 interface RouteContext {
@@ -116,7 +117,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
         }
       } catch (activityError) {
         // Log error but don't fail the request - analysis was successful
-        console.warn('Could not log activity:', activityError);
+        logger.warn('[Analyze API] Could not log activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
       }
     }
 
@@ -126,9 +127,9 @@ export async function POST(request: NextRequest, context: RouteContext) {
       errors: result.errors,
     });
   } catch (error) {
-    console.error('Website analysis error:', error);
+    logger.error('[Analyze API] Website analysis error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error en analisis' },
+      { error: 'Error en analisis' },
       { status: 500 }
     );
   }
@@ -153,7 +154,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     return NextResponse.json({ analysis });
   } catch (error) {
-    console.error('Get analysis error:', error);
+    logger.error('[Analyze API] Get analysis error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error al obtener analisis' },
       { status: 500 }

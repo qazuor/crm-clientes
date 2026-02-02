@@ -2,6 +2,7 @@ import { NextRequest } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { CanalContacto } from '@prisma/client';
 import {
   CreatePlantillaSchema,
@@ -62,7 +63,7 @@ export async function POST(request: NextRequest) {
     const session = await auth();
     if (!session) return unauthorizedResponse();
 
-    if (session.user.role !== 'ADMIN') {
+    if (!isAdmin(session.user.role)) {
       return errorResponse('Solo administradores pueden crear plantillas', { status: 403, code: 'FORBIDDEN' });
     }
 

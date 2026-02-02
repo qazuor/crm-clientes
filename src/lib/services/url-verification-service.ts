@@ -4,6 +4,7 @@
  */
 
 import { AISdkService } from './ai-sdk-service';
+import { logger } from '@/lib/logger';
 import { getUrlVerificationPrompt } from './enrichment-prompts';
 
 export interface UrlVerificationResult {
@@ -157,7 +158,7 @@ export class UrlVerificationService {
         };
       }
     } catch (error) {
-      console.error('URL ownership verification failed:', error);
+      logger.error('URL ownership verification failed', error instanceof Error ? error : new Error(String(error)));
     }
 
     return {

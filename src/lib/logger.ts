@@ -9,7 +9,7 @@ const LOG_LEVELS: Record<LogLevel, number> = {
 
 const currentLevel = (process.env.LOG_LEVEL || (process.env.NODE_ENV === 'production' ? 'warn' : 'debug')) as LogLevel;
 
-const SENSITIVE_KEYS = ['password', 'token', 'secret', 'apiKey', 'key', 'credentials', 'authorization'];
+const SENSITIVE_KEYS = ['password', 'token', 'secret', 'apiKey', 'key', 'credentials', 'authorization', 'cookie', 'session', 'bearer'];
 
 function sanitize(data?: Record<string, unknown>): Record<string, unknown> | undefined {
   if (!data) return undefined;
