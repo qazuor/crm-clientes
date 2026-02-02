@@ -38,7 +38,7 @@ const securityHeaders = [
       "style-src 'self' 'unsafe-inline'",
       "img-src 'self' data: blob: https:",
       "font-src 'self' data:",
-      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com https://*.blob.vercel-storage.com https://vercel.live https://*.pusher.com wss://*.pusher.com",
+      "connect-src 'self' https://pagespeedonline.googleapis.com https://shot.screenshotapi.net https://api.openai.com https://*.blob.vercel-storage.com https://vercel.live https://*.pusher.com wss://*.pusher.com https://accounts.google.com https://github.com",
       "frame-src https://vercel.live",
       "frame-ancestors 'self'",
       "base-uri 'self'",

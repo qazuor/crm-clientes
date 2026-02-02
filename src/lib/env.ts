@@ -22,6 +22,15 @@ const envSchema = z.object({
   // OpenAI (optional)
   OPENAI_API_KEY: z.string().optional(),
 
+  // OAuth Social Providers (optional)
+  GOOGLE_CLIENT_ID: z.string().optional(),
+  GOOGLE_CLIENT_SECRET: z.string().optional(),
+  GITHUB_CLIENT_ID: z.string().optional(),
+  GITHUB_CLIENT_SECRET: z.string().optional(),
+
+  // OAuth email whitelist (comma-separated, optional)
+  OAUTH_ALLOWED_EMAILS: z.string().optional(),
+
   // Google APIs (optional)
   GOOGLE_PLACES_API_KEY: z.string().optional(),
   GOOGLE_API_KEY: z.string().optional(),

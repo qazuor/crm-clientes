@@ -64,6 +64,16 @@ export const betterAuthInstance = betterAuth({
   database: prismaAdapter(prisma, { provider: 'postgresql' }),
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.BETTER_AUTH_URL,
+  socialProviders: {
+    google: {
+      clientId: process.env.GOOGLE_CLIENT_ID!,
+      clientSecret: process.env.GOOGLE_CLIENT_SECRET!,
+    },
+    github: {
+      clientId: process.env.GITHUB_CLIENT_ID!,
+      clientSecret: process.env.GITHUB_CLIENT_SECRET!,
+    },
+  },
   emailAndPassword: {
     enabled: true,
     password: {
@@ -101,6 +111,22 @@ export const betterAuthInstance = betterAuth({
     },
   },
   databaseHooks: {
+    user: {
+      create: {
+        before: async (user) => {
+          const allowedEmails = process.env.OAUTH_ALLOWED_EMAILS;
+          if (allowedEmails) {
+            const whitelist = allowedEmails
+              .split(',')
+              .map((e) => e.trim().toLowerCase());
+            if (!whitelist.includes(user.email.toLowerCase())) {
+              throw new Error('Email not authorized for sign-up.');
+            }
+          }
+          return { data: user };
+        },
+      },
+    },
     session: {
       create: {
         before: async (session) => {
