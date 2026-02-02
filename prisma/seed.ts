@@ -28,6 +28,7 @@ async function main() {
   await prisma.actividad.deleteMany({});
   await prisma.cliente.deleteMany({});
   await prisma.plantillaContacto.deleteMany({});
+  await prisma.verification.deleteMany({});
   await prisma.session.deleteMany({});
   await prisma.account.deleteMany({});
   await prisma.user.deleteMany({});

@@ -1,15 +1,21 @@
 'use client';
 
-import { signOut } from 'next-auth/react';
+import { authClient } from '@/lib/auth-client';
 import { Button } from '@/components/ui/Button';
+import { useRouter } from 'next/navigation';
 
 export default function LogoutButton() {
+  const router = useRouter();
+
   return (
-    <Button 
-      variant="outline" 
-      onClick={() => signOut({ callbackUrl: '/auth/login' })}
+    <Button
+      variant="outline"
+      onClick={async () => {
+        await authClient.signOut();
+        router.push('/auth/login');
+      }}
     >
-      Cerrar Sesión
+      Cerrar Sesion
     </Button>
   );
 }

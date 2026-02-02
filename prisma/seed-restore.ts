@@ -86,18 +86,26 @@ export async function seedUsers(prisma: PrismaClient) {
   console.log('👥 Creando usuarios del sistema...');
   const hashedPassword = await bcrypt.hash('123456', 12);
 
-  await prisma.user.create({
-    data: { email: 'admin@crm.com', name: 'Administrador', password: hashedPassword, role: 'ADMIN' },
-  });
-  await prisma.user.create({
-    data: { email: 'manager@crm.com', name: 'Gerente de Ventas', password: hashedPassword, role: 'MANAGER' },
-  });
-  await prisma.user.create({
-    data: { email: 'agent1@crm.com', name: 'Agente Comercial 1', password: hashedPassword, role: 'AGENT' },
-  });
-  await prisma.user.create({
-    data: { email: 'agent2@crm.com', name: 'Agente Comercial 2', password: hashedPassword, role: 'AGENT' },
-  });
+  const users = [
+    { email: 'admin@crm.com', name: 'Administrador', role: 'ADMIN' as const },
+    { email: 'manager@crm.com', name: 'Gerente de Ventas', role: 'MANAGER' as const },
+    { email: 'agent1@crm.com', name: 'Agente Comercial 1', role: 'AGENT' as const },
+    { email: 'agent2@crm.com', name: 'Agente Comercial 2', role: 'AGENT' as const },
+  ];
+
+  for (const userData of users) {
+    const user = await prisma.user.create({
+      data: { email: userData.email, name: userData.name, role: userData.role, emailVerified: true },
+    });
+    await prisma.account.create({
+      data: {
+        userId: user.id,
+        accountId: user.id,
+        providerId: 'credential',
+        password: hashedPassword,
+      },
+    });
+  }
 
   console.log('✅ Usuarios creados');
 }
@@ -194,6 +202,7 @@ if (require.main === module) {
     await prisma.actividad.deleteMany({});
     await prisma.cliente.deleteMany({});
     await prisma.plantillaContacto.deleteMany({});
+    await prisma.verification.deleteMany({});
     await prisma.session.deleteMany({});
     await prisma.account.deleteMany({});
     await prisma.user.deleteMany({});
