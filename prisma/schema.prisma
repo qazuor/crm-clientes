@@ -75,48 +75,70 @@ model User {
   id            String         @id @default(cuid())
   email         String         @unique
   name          String?
-  password      String?
+  emailVerified Boolean        @default(false)
+  image         String?
   role          UserRole       @default(AGENT)
   createdAt     DateTime       @default(now())
   updatedAt     DateTime       @updatedAt
+
+  // Account lockout fields
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
+
   accounts      Account[]
   activities    Actividad[]
   sessions      Session[]
   notifications Notification[]
   plantillas    PlantillaContacto[]
   mensajes      Mensaje[]
+  auditLogs     AuditLog[]
 
   @@index([role])
   @@map("users")
 }
 
 model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-  user              User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id                    String    @id @default(cuid())
+  userId                String
+  accountId             String
+  providerId            String
+  accessToken           String?   @db.Text
+  refreshToken          String?   @db.Text
+  accessTokenExpiresAt  DateTime?
+  refreshTokenExpiresAt DateTime?
+  scope                 String?
+  idToken               String?   @db.Text
+  password              String?
+  createdAt             DateTime  @default(now())
+  updatedAt             DateTime  @updatedAt
+  user                  User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  @@unique([provider, providerAccountId])
   @@map("accounts")
 }
 
 model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  id        String   @id @default(cuid())
+  userId    String
+  token     String   @unique
+  expiresAt DateTime
+  ipAddress String?
+  userAgent String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 
   @@map("sessions")
+}
+
+model Verification {
+  id         String   @id @default(cuid())
+  identifier String
+  value      String
+  expiresAt  DateTime
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+
+  @@map("verifications")
 }
 
 model Cliente {
@@ -167,6 +189,7 @@ model Cliente {
   @@index([deletedAt])
   @@index([estado, prioridad])
   @@index([deletedAt, estado])
+  @@index([deletedAt, estado, prioridad])
   @@index([enrichmentStatus])
   @@map("clientes")
 }
@@ -186,7 +209,7 @@ model Actividad {
   deletedAt DateTime?
 
   // Relations
-  usuario User    @relation(fields: [usuarioId], references: [id])
+  usuario User    @relation(fields: [usuarioId], references: [id], onDelete: Restrict)
   cliente Cliente @relation(fields: [clienteId], references: [id], onDelete: Cascade)
 
   @@index([clienteId])
@@ -197,6 +220,7 @@ model Actividad {
   @@index([deletedAt])
   @@index([clienteId, fecha])
   @@index([usuarioId, fecha])
+  @@index([clienteId, deletedAt])
   @@index([deletedAt, clienteId])
   @@map("actividades")
 }
@@ -470,12 +494,16 @@ model PlantillaContacto {
   createdAt   DateTime      @default(now())
   updatedAt   DateTime      @updatedAt
 
+  // Soft delete
+  deletedAt DateTime?
+
   creadoPor User      @relation(fields: [creadoPorId], references: [id])
   mensajes  Mensaje[]
 
   @@index([canal])
   @@index([esActiva])
   @@index([creadoPorId])
+  @@index([deletedAt])
   @@map("plantillas_contacto")
 }
 
@@ -494,6 +522,9 @@ model Mensaje {
   createdAt     DateTime      @default(now())
   updatedAt     DateTime      @updatedAt
 
+  // Soft delete
+  deletedAt DateTime?
+
   cliente   Cliente            @relation(fields: [clienteId], references: [id], onDelete: Cascade)
   usuario   User               @relation(fields: [usuarioId], references: [id])
   plantilla PlantillaContacto? @relation(fields: [plantillaId], references: [id])
@@ -505,5 +536,25 @@ model Mensaje {
   @@index([estado])
   @@index([createdAt])
   @@index([clienteId, createdAt])
+  @@index([deletedAt])
   @@map("mensajes")
+}
+
+// Audit log for tracking admin actions
+model AuditLog {
+  id         String   @id @default(cuid())
+  action     String
+  userId     String
+  resource   String
+  resourceId String?
+  details    String?  @db.Text
+  ipAddress  String?
+  createdAt  DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id])
+
+  @@index([userId])
+  @@index([action])
+  @@index([createdAt])
+  @@map("audit_logs")
 }
