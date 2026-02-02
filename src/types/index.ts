@@ -27,6 +27,11 @@ export type TipoActividad =
   | 'NOTA'
   | 'PROPUESTA'
   | 'SEGUIMIENTO'
+  | 'CLIENTE_CREADO'
+  | 'CLIENTE_EDITADO'
+  | 'CLIENTE_ELIMINADO'
+  | 'IA_ENRIQUECIMIENTO'
+  | 'CONTACTO_AUTOMATICO'
 
 export type CanalContacto = 'EMAIL' | 'WHATSAPP'
 export type EstadoMensaje = 'PENDIENTE' | 'ENVIADO' | 'ERROR'
