@@ -2,6 +2,7 @@
 // Usa base de datos para persistencia (compatible con Vercel)
 
 import { prisma } from './prisma';
+import { logger } from './logger';
 
 export interface QuotaService {
   name: string;
@@ -79,10 +80,11 @@ async function getOrCreateQuota(serviceName: ServiceName): Promise<{ used: numbe
       lastReset: quota.lastReset
     };
   } catch (error) {
-    // Fallback a valores por defecto si BD no está disponible
-    console.warn(`Quota DB error for ${serviceName}:`, error);
+    // Fail-closed: when DB is unavailable, report quota as exhausted
+    // to prevent external API calls when we cannot verify quota
+    logger.warn(`Quota DB error for ${serviceName}, failing closed (quota exhausted)`, { error: error instanceof Error ? error.message : String(error) });
     return {
-      used: 0,
+      used: DAILY_LIMITS[serviceName],
       limit: DAILY_LIMITS[serviceName],
       lastReset: new Date()
     };
@@ -154,7 +156,7 @@ export async function consumeQuota(serviceName: ServiceName, amount: number = 1)
 
     return true;
   } catch (error) {
-    console.error(`Error consuming quota for ${serviceName}:`, error);
+    logger.error(`Error consuming quota for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
     return false;
   }
 }
@@ -188,7 +190,7 @@ export async function getQuotaInfo(serviceName: ServiceName): Promise<{
       resetIn: `${hoursUntilReset}h ${minutesUntilReset}m`
     };
   } catch (error) {
-    console.error(`Error getting quota info for ${serviceName}:`, error);
+    logger.error(`Error getting quota info for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -273,7 +275,7 @@ export async function getExtendedQuotaInfo(serviceName: ServiceName): Promise<{
       isNearLimit: basicInfo.percentage >= quota.alertThreshold,
     };
   } catch (error) {
-    console.error(`Error getting extended quota info for ${serviceName}:`, error);
+    logger.error(`Error getting extended quota info for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }
@@ -302,7 +304,7 @@ export async function recordSuccess(serviceName: ServiceName): Promise<void> {
     });
     lastCacheUpdate = 0;
   } catch (error) {
-    console.error(`Error recording success for ${serviceName}:`, error);
+    logger.error(`Error recording success for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -319,7 +321,7 @@ export async function recordError(serviceName: ServiceName, errorMessage: string
     });
     lastCacheUpdate = 0;
   } catch (error) {
-    console.error(`Error recording error for ${serviceName}:`, error);
+    logger.error(`Error recording error for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -418,7 +420,7 @@ async function saveQuotaHistory(quotaId: string, used: number, successCount: num
       }
     });
   } catch (error) {
-    console.error('Error saving quota history:', error);
+    logger.error('Error saving quota history', error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -455,7 +457,7 @@ export async function getQuotaHistory(serviceName: ServiceName, days: number = 3
       errors: h.errors
     }));
   } catch (error) {
-    console.error(`Error getting quota history for ${serviceName}:`, error);
+    logger.error(`Error getting quota history for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 }
@@ -516,7 +518,7 @@ export async function checkQuotaAlerts(): Promise<{
 
     return alerts;
   } catch (error) {
-    console.error('Error checking quota alerts:', error);
+    logger.error('Error checking quota alerts', error instanceof Error ? error : new Error(String(error)));
     return [];
   }
 }
@@ -529,7 +531,7 @@ export async function setAlertThreshold(serviceName: ServiceName, threshold: num
       data: { alertThreshold: Math.min(100, Math.max(0, threshold)) }
     });
   } catch (error) {
-    console.error(`Error setting alert threshold for ${serviceName}:`, error);
+    logger.error(`Error setting alert threshold for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
   }
 }
 
@@ -559,7 +561,7 @@ export async function getQuotaWithAlerts(serviceName: ServiceName): Promise<{
       isNearLimit: basicInfo.percentage >= quota.alertThreshold
     };
   } catch (error) {
-    console.error(`Error getting quota with alerts for ${serviceName}:`, error);
+    logger.error(`Error getting quota with alerts for ${serviceName}`, error instanceof Error ? error : new Error(String(error)));
     return null;
   }
 }

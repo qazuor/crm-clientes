@@ -7,6 +7,7 @@ import { prisma } from '@/lib/prisma';
 import { ConsensusService } from './consensus-service';
 import { WebsiteAnalysisService } from './website-analysis-service';
 import { logger } from '@/lib/logger';
+import { pMap } from '@/lib/concurrency';
 import type { ClientContext } from './enrichment-prompts';
 import type { AIProvider, FieldReviewStatus, ReviewableField } from '@/types/enrichment';
 import { REVIEWABLE_FIELDS } from '@/types/enrichment';
@@ -44,6 +45,9 @@ export interface BulkEnrichmentResult {
 
 // Maximum clients per bulk operation
 const MAX_BULK_SIZE = 50;
+
+// Maximum concurrent enrichment operations to avoid overwhelming external APIs
+const MAX_CONCURRENCY = 3;
 
 // Progress callback type
 type ProgressCallback = (progress: BulkEnrichmentProgress) => void;
@@ -152,6 +156,7 @@ export class BulkEnrichmentService {
     const clientes = await prisma.cliente.findMany({
       where: {
         id: { in: clienteIds },
+        deletedAt: null,
       },
       select: {
         id: true,
@@ -175,19 +180,17 @@ export class BulkEnrichmentService {
       };
     }
 
-    const results: BulkEnrichmentResult['results'] = [];
     let successful = 0;
     let failed = 0;
+    let completed = 0;
 
-    // Process clients sequentially to avoid rate limiting
-    for (let i = 0; i < clientes.length; i++) {
-      const cliente = clientes[i];
-
+    // Process clients with limited concurrency (max MAX_CONCURRENCY at a time)
+    const results = await pMap(clientes, MAX_CONCURRENCY, async (cliente) => {
       // Report progress
       if (onProgress) {
         onProgress({
           total: clientes.length,
-          completed: i,
+          completed,
           successful,
           failed,
           currentClientId: cliente.id,
@@ -291,7 +294,7 @@ export class BulkEnrichmentService {
         if (result.success) {
           successful++;
 
-          // Log activity (non-critical — don't fail the enrichment if this errors)
+          // Log activity (non-critical -- don't fail the enrichment if this errors)
           try {
             await prisma.actividad.create({
               data: {
@@ -326,13 +329,9 @@ export class BulkEnrichmentService {
         );
       }
 
-      results.push(result);
-
-      // Small delay between clients to avoid rate limiting
-      if (i < clientes.length - 1) {
-        await new Promise((resolve) => setTimeout(resolve, 500));
-      }
-    }
+      completed++;
+      return result;
+    });
 
     // Final progress update
     if (onProgress) {

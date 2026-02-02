@@ -1,6 +1,16 @@
 import { quotaManager } from './quota-manager';
 import { validateUrl } from './url-validator';
 import { logger } from './logger';
+import { CircuitBreaker } from './circuit-breaker';
+import { withRetry } from './retry';
+
+// Circuit breaker for PageSpeed API
+const pageSpeedCircuitBreaker = new CircuitBreaker({
+  name: 'pagespeed',
+  failureThreshold: 5,
+  resetTimeout: 60000,
+  successThreshold: 2,
+});
 
 export interface PageSpeedMetrics {
   score: number;
@@ -80,35 +90,36 @@ export class PageSpeedService {
 
       logger.info('Analyzing PageSpeed', { url: safeUrl, strategy });
 
-      // Crear AbortController para timeout
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos
+      // Use circuit breaker + retry for the external API call
+      const data = await pageSpeedCircuitBreaker.execute(() =>
+        withRetry(async () => {
+          // Crear AbortController para timeout
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 60000); // 60 segundos
 
-      // Hacer request a la API
-      const response = await fetch(apiUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'User-Agent': 'CRM-Cliente-Enrichment/1.0'
-        },
-        signal: controller.signal
-      });
+          // Hacer request a la API
+          const response = await fetch(apiUrl, {
+            method: 'GET',
+            headers: {
+              'Accept': 'application/json',
+              'User-Agent': 'CRM-Cliente-Enrichment/1.0'
+            },
+            signal: controller.signal
+          });
 
-      clearTimeout(timeoutId);
+          clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        await quotaManager.incrementUsage('pagespeed');
+          if (!response.ok) {
+            const errorText = await response.text().catch(() => 'Unknown error');
+            throw new Error(`API Error: ${response.status} ${response.statusText} - ${errorText}`);
+          }
 
-        const errorText = await response.text().catch(() => 'Unknown error');
-        return {
-          success: false,
-          url: safeUrl,
-          strategy,
-          error: `API Error: ${response.status} ${response.statusText} - ${errorText}`
-        };
-      }
-
-      const data = await response.json();
+          return response.json();
+        }, {
+          maxRetries: 2,
+          baseDelay: 500,
+        })
+      );
 
       // Procesar resultados
       const result = this.processPageSpeedData(data, safeUrl, strategy);

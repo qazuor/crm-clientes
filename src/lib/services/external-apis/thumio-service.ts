@@ -10,6 +10,7 @@ import { logger } from '@/lib/logger';
 import { validateUrl, extractDomain } from '@/lib/url-validator';
 import { uploadBlob } from '@/lib/blob-storage';
 import { quotaManager } from '@/lib/quota-manager';
+import { withRetry } from '@/lib/retry';
 
 export interface ThumioOptions {
   url: string;
@@ -104,43 +105,40 @@ export class ThumioService {
         screenshotUrl
       });
 
-      // Fetch the screenshot
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), 30000);
+      // Fetch the screenshot with retry for transient failures
+      const { imageBuffer } = await withRetry(async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 30000);
 
-      const response = await fetch(screenshotUrl, {
-        method: 'GET',
-        headers: {
-          'Accept': 'image/*',
-          'User-Agent': 'CRM-Clientes/1.0',
-        },
-        signal: controller.signal,
+        const response = await fetch(screenshotUrl, {
+          method: 'GET',
+          headers: {
+            'Accept': 'image/*',
+            'User-Agent': 'CRM-Clientes/1.0',
+          },
+          signal: controller.signal,
+        });
+
+        clearTimeout(timeoutId);
+
+        if (!response.ok) {
+          throw new Error(`Thum.io Error: ${response.status} ${response.statusText}`);
+        }
+
+        // Verify it's an image
+        const ct = response.headers.get('content-type');
+        if (!ct || !ct.includes('image')) {
+          throw new Error(`Unexpected content type: ${ct}`);
+        }
+
+        const buffer = await response.arrayBuffer();
+        return { imageBuffer: buffer, contentType: ct };
+      }, {
+        maxRetries: 2,
+        baseDelay: 300,
       });
 
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        await quotaManager.incrementUsage('screenshots');
-        return {
-          success: false,
-          error: `Thum.io Error: ${response.status} ${response.statusText}`,
-          provider: 'thumio',
-        };
-      }
-
-      // Verify it's an image
-      const contentType = response.headers.get('content-type');
-      if (!contentType || !contentType.includes('image')) {
-        await quotaManager.incrementUsage('screenshots');
-        return {
-          success: false,
-          error: `Unexpected content type: ${contentType}`,
-          provider: 'thumio',
-        };
-      }
-
-      // Get the image buffer
-      const imageBuffer = await response.arrayBuffer();
+      // contentType is checked within retry; proceed with imageBuffer
 
       if (imageBuffer.byteLength === 0) {
         await quotaManager.incrementUsage('screenshots');

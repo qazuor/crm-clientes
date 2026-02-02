@@ -5,17 +5,38 @@
 
 import { ApiKeyService } from './api-key-service';
 import { logger } from '@/lib/logger';
+import { CircuitBreaker } from '@/lib/circuit-breaker';
 import type { AIProvider } from '@/types/enrichment';
+
+// One circuit breaker per AI provider to isolate failures
+const providerCircuitBreakers: Record<string, CircuitBreaker> = {};
+
+function getProviderCircuitBreaker(provider: AIProvider): CircuitBreaker {
+  if (!providerCircuitBreakers[provider]) {
+    providerCircuitBreakers[provider] = new CircuitBreaker({
+      name: `ai-${provider}`,
+      failureThreshold: 5,
+      resetTimeout: 60000,
+      successThreshold: 2,
+    });
+  }
+  return providerCircuitBreakers[provider];
+}
 
 export interface AIMessage {
   role: 'system' | 'user' | 'assistant';
   content: string;
 }
 
+/** Default timeout for AI provider calls (30 seconds) */
+const DEFAULT_AI_TIMEOUT_MS = 30_000;
+
 export interface AICompletionOptions {
   temperature?: number;
   topP?: number;
   maxTokens?: number;
+  /** Timeout in milliseconds for the AI provider call. Default: 30000 (30s) */
+  timeoutMs?: number;
 }
 
 export interface AICompletionResult {
@@ -57,7 +78,8 @@ async function callOpenAICompatible(
   apiKey: string,
   model: string,
   messages: AIMessage[],
-  options: AICompletionOptions
+  options: AICompletionOptions,
+  signal?: AbortSignal
 ): Promise<AICompletionResult & { provider: AIProvider }> {
   const requestBody = {
     model,
@@ -92,6 +114,7 @@ async function callOpenAICompatible(
       'Authorization': `Bearer ${apiKey}`,
     },
     body: JSON.stringify(requestBody),
+    signal,
   });
 
   const elapsed = Date.now() - startTime;
@@ -143,7 +166,8 @@ async function callGemini(
   apiKey: string,
   model: string,
   messages: AIMessage[],
-  options: AICompletionOptions
+  options: AICompletionOptions,
+  signal?: AbortSignal
 ): Promise<AICompletionResult> {
   // Convert messages to Gemini format
   const contents = messages
@@ -189,6 +213,7 @@ async function callGemini(
           maxOutputTokens: options.maxTokens ?? 2000,
         },
       }),
+      signal,
     }
   );
 
@@ -262,47 +287,59 @@ export class AISdkService {
 
     const model = apiKey.model ?? this.getDefaultModel(provider);
 
+    const circuitBreaker = getProviderCircuitBreaker(provider);
+    const timeoutMs = options.timeoutMs ?? DEFAULT_AI_TIMEOUT_MS;
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
     try {
-      let result: AICompletionResult;
+      const result = await circuitBreaker.execute(async () => {
+        let innerResult: AICompletionResult;
 
-      switch (provider) {
-        case 'openai':
-          result = await callOpenAICompatible(
-            PROVIDER_CONFIGS.openai.baseUrl,
-            apiKey.apiKey,
-            model,
-            messages,
-            options
-          );
-          break;
+        switch (provider) {
+          case 'openai':
+            innerResult = await callOpenAICompatible(
+              PROVIDER_CONFIGS.openai.baseUrl,
+              apiKey.apiKey,
+              model,
+              messages,
+              options,
+              controller.signal
+            );
+            break;
 
-        case 'gemini':
-          result = await callGemini(apiKey.apiKey, model, messages, options);
-          break;
+          case 'gemini':
+            innerResult = await callGemini(apiKey.apiKey, model, messages, options, controller.signal);
+            break;
 
-        case 'grok':
-          result = await callOpenAICompatible(
-            PROVIDER_CONFIGS.grok.baseUrl,
-            apiKey.apiKey,
-            model,
-            messages,
-            options
-          );
-          break;
+          case 'grok':
+            innerResult = await callOpenAICompatible(
+              PROVIDER_CONFIGS.grok.baseUrl,
+              apiKey.apiKey,
+              model,
+              messages,
+              options,
+              controller.signal
+            );
+            break;
 
-        case 'deepseek':
-          result = await callOpenAICompatible(
-            PROVIDER_CONFIGS.deepseek.baseUrl,
-            apiKey.apiKey,
-            model,
-            messages,
-            options
-          );
-          break;
+          case 'deepseek':
+            innerResult = await callOpenAICompatible(
+              PROVIDER_CONFIGS.deepseek.baseUrl,
+              apiKey.apiKey,
+              model,
+              messages,
+              options,
+              controller.signal
+            );
+            break;
 
-        default:
-          throw new Error(`Unsupported provider: ${provider}`);
-      }
+          default:
+            throw new Error(`Unsupported provider: ${provider}`);
+        }
+
+        return innerResult;
+      });
 
       // Mark the key as used
       await ApiKeyService.markUsed(provider);
@@ -313,8 +350,15 @@ export class AISdkService {
         model,
       };
     } catch (error) {
-      console.error(`Error calling ${provider}:`, error);
+      if (controller.signal.aborted) {
+        const timeoutError = new Error(`AI provider ${provider} timed out after ${timeoutMs}ms`);
+        logger.error(`Timeout calling ${provider}`, timeoutError);
+        throw timeoutError;
+      }
+      logger.error(`Error calling ${provider}`, error instanceof Error ? error : new Error(String(error)));
       throw error;
+    } finally {
+      clearTimeout(timeoutId);
     }
   }
 
