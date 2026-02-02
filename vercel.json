@@ -9,5 +9,7 @@
       "maxDuration": 60
     }
   },
-  "crons": []
+  "crons": [
+    { "path": "/api/cron/cleanup", "schedule": "0 2 * * *" }
+  ]
 }
