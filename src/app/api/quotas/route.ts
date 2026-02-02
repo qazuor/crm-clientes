@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { auth } from '@/lib/auth'
 import { getAllExtendedQuotasInfo, resetAllQuotas } from '@/lib/quota-manager'
 import { logger } from '@/lib/logger'
@@ -7,10 +8,11 @@ import {
   errorResponse,
   unauthorizedResponse,
   serverErrorResponse,
+  withCacheHeaders,
 } from '@/lib/api-response'
 
 // GET /api/quotas - Obtener estado actual de todas las quotas
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await auth()
 
@@ -27,7 +29,7 @@ export async function GET() {
 
     logger.debug('Quotas fetched', { userId: session.user.id })
 
-    return successResponse(quotasInfo)
+    return withCacheHeaders(successResponse(quotasInfo), 60, true)
 
   } catch (error) {
     logger.error('Error fetching quotas', error instanceof Error ? error : new Error(String(error)))
@@ -36,7 +38,7 @@ export async function GET() {
 }
 
 // POST /api/quotas - Reset manual de quotas (solo admin)
-export async function POST() {
+export async function POST(): Promise<NextResponse> {
   try {
     const session = await auth()
 

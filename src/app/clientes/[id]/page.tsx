@@ -17,8 +17,19 @@ import {
   PlusIcon,
 } from '@heroicons/react/24/outline';
 import { CopyButton } from '@/components/ui/CopyButton';
-import { ClientEnrichmentSection } from '@/components/enrichment/ClientEnrichmentSection';
+import dynamic from 'next/dynamic';
 import { notFound } from 'next/navigation';
+
+const ClientEnrichmentSection = dynamic(
+  () => import('@/components/enrichment/ClientEnrichmentSection').then(mod => mod.ClientEnrichmentSection),
+  {
+    loading: () => (
+      <div className="bg-white rounded-xl shadow-sm border border-gray-200 p-8 text-center">
+        <div className="animate-pulse text-gray-400">Cargando sección de enriquecimiento...</div>
+      </div>
+    ),
+  }
+);
 import AuthenticatedLayout from '@/components/AuthenticatedLayout';
 import { ContactButtons } from '@/components/ContactButtons';
 import { MensajeHistory } from '@/components/MensajeHistory';

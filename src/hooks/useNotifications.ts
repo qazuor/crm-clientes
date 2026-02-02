@@ -47,6 +47,7 @@ export function useNotifications(unreadOnly?: boolean) {
     queryKey: ['notifications', unreadOnly],
     queryFn: () => fetchNotifications(unreadOnly),
     refetchInterval: 60000, // Refetch every minute
+    refetchIntervalInBackground: false, // Stop polling when tab is not visible
     staleTime: 30000, // 30 seconds
   });
 }

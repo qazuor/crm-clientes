@@ -166,8 +166,11 @@ interface BatchConfirmRejectResult {
 
 // ─── Fetch helpers ─────────────────────────────────────────────────────
 
-async function fetchEnrichment(clienteId: string): Promise<EnrichmentGetResponse> {
-  const res = await fetch(`/api/clientes/${clienteId}/enrich`);
+async function fetchEnrichment(
+  clienteId: string,
+  signal?: AbortSignal
+): Promise<EnrichmentGetResponse> {
+  const res = await fetch(`/api/clientes/${clienteId}/enrich`, { signal });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al obtener enriquecimiento');
@@ -175,11 +178,16 @@ async function fetchEnrichment(clienteId: string): Promise<EnrichmentGetResponse
   return res.json();
 }
 
-async function postEnrich(clienteId: string, options: EnrichOptions): Promise<EnrichPostResponse> {
+async function postEnrich(
+  clienteId: string,
+  options: EnrichOptions,
+  signal?: AbortSignal
+): Promise<EnrichPostResponse> {
   const res = await fetch(`/api/clientes/${clienteId}/enrich`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(options),
+    signal,
   });
   if (!res.ok) {
     const err = await res.json();
@@ -190,12 +198,14 @@ async function postEnrich(clienteId: string, options: EnrichOptions): Promise<En
 
 async function patchReview(
   clienteId: string,
-  options: ReviewFieldsOptions
+  options: ReviewFieldsOptions,
+  signal?: AbortSignal
 ): Promise<FieldReviewResponse> {
   const res = await fetch(`/api/clientes/${clienteId}/enrich`, {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(options),
+    signal,
   });
   if (!res.ok) {
     const err = await res.json();
@@ -204,8 +214,8 @@ async function patchReview(
   return res.json();
 }
 
-async function fetchBulkStats(): Promise<BulkStatsResponse> {
-  const res = await fetch('/api/admin/bulk-enrich');
+async function fetchBulkStats(signal?: AbortSignal): Promise<BulkStatsResponse> {
+  const res = await fetch('/api/admin/bulk-enrich', { signal });
   if (!res.ok) {
     const err = await res.json();
     throw new Error(err.error || 'Error al obtener estadisticas');
@@ -213,11 +223,15 @@ async function fetchBulkStats(): Promise<BulkStatsResponse> {
   return res.json();
 }
 
-async function postBulkEnrich(options: BulkEnrichmentOptions): Promise<BulkEnrichmentResult> {
+async function postBulkEnrich(
+  options: BulkEnrichmentOptions,
+  signal?: AbortSignal
+): Promise<BulkEnrichmentResult> {
   const res = await fetch('/api/admin/bulk-enrich', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(options),
+    signal,
   });
   if (!res.ok) {
     const err = await res.json();
@@ -228,12 +242,14 @@ async function postBulkEnrich(options: BulkEnrichmentOptions): Promise<BulkEnric
 
 async function patchBulkReview(
   action: 'confirm' | 'reject',
-  items: BatchFieldItem[]
+  items: BatchFieldItem[],
+  signal?: AbortSignal
 ): Promise<BatchConfirmRejectResult> {
   const res = await fetch('/api/admin/bulk-enrich', {
     method: 'PATCH',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ action, items }),
+    signal,
   });
   if (!res.ok) {
     const err = await res.json();
@@ -250,7 +266,7 @@ export function useEnrichment(clienteId?: string) {
   // ── Single-client query (only when clienteId provided) ──
   const dataQuery = useQuery({
     queryKey: ['enrichment', clienteId],
-    queryFn: () => fetchEnrichment(clienteId!),
+    queryFn: ({ signal }) => fetchEnrichment(clienteId!, signal),
     enabled: !!clienteId,
     staleTime: 5 * 60 * 1000,
   });
@@ -258,7 +274,7 @@ export function useEnrichment(clienteId?: string) {
   // ── Bulk stats query ──
   const bulkStatsQuery = useQuery({
     queryKey: ['bulk-enrichment-stats'],
-    queryFn: fetchBulkStats,
+    queryFn: ({ signal }) => fetchBulkStats(signal),
     staleTime: 60_000,
     enabled: !clienteId, // only fetch when in bulk mode
   });
@@ -296,7 +312,7 @@ export function useEnrichment(clienteId?: string) {
 
   // ── Bulk mutations ──
   const bulkEnrichMutation = useMutation({
-    mutationFn: postBulkEnrich,
+    mutationFn: (opts: BulkEnrichmentOptions) => postBulkEnrich(opts),
     onSuccess: invalidateBulk,
   });
 

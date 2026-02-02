@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -5,10 +6,11 @@ import {
   successResponse,
   unauthorizedResponse,
   serverErrorResponse,
+  withCacheHeaders,
 } from '@/lib/api-response'
 
 // GET /api/stats - Obtener estadísticas del dashboard
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await auth()
 
@@ -129,21 +131,25 @@ export async function GET() {
 
     logger.debug('Stats fetched', { userId: session.user.id })
 
-    return successResponse({
-      resumen: {
-        totalClientes,
-        clientesActivos,
-        actividadesHoy,
-        llamadasHoy,
-        emailsHoy,
-      },
-      distribucion: {
-        porEstado,
-        porPrioridad,
-        porFuente
-      },
-      actividadesRecientes
-    })
+    return withCacheHeaders(
+      successResponse({
+        resumen: {
+          totalClientes,
+          clientesActivos,
+          actividadesHoy,
+          llamadasHoy,
+          emailsHoy,
+        },
+        distribucion: {
+          porEstado,
+          porPrioridad,
+          porFuente
+        },
+        actividadesRecientes
+      }),
+      30,
+      true
+    )
 
   } catch (error) {
     logger.error('Error fetching stats', error instanceof Error ? error : new Error(String(error)))
