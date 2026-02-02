@@ -122,6 +122,7 @@ export const betterAuthInstance = betterAuth({
             if (!whitelist.includes(user.email.toLowerCase())) {
               throw new Error('Email not authorized for sign-up.');
             }
+            return { data: { ...user, role: 'ADMIN' } };
           }
           return { data: user };
         },
