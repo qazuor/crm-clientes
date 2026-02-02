@@ -6,8 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { logger } from '@/lib/logger';
+import { isAdmin } from '@/lib/rbac';
 import { BulkEnrichmentService } from '@/lib/services/bulk-enrichment-service';
 import { AISdkService } from '@/lib/services/ai-sdk-service';
+import { BULK } from '@/lib/constants';
 import type { AIProvider } from '@/types/enrichment';
 
 export async function POST(request: NextRequest) {
@@ -16,6 +19,10 @@ export async function POST(request: NextRequest) {
 
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!isAdmin(session.user.role)) {
+      return NextResponse.json({ error: 'Solo administradores pueden ejecutar enriquecimiento masivo' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -28,9 +35,9 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (clienteIds.length > 50) {
+    if (clienteIds.length > BULK.MAX_CLIENTS) {
       return NextResponse.json(
-        { error: 'Maximo 50 clientes por operacion' },
+        { error: `Maximo ${BULK.MAX_CLIENTS} clientes por operacion` },
         { status: 400 }
       );
     }
@@ -61,9 +68,9 @@ export async function POST(request: NextRequest) {
       ...result,
     });
   } catch (error) {
-    console.error('Bulk enrichment error:', error);
+    logger.error('[Bulk Enrich] Error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error en enriquecimiento' },
+      { error: 'Error en enriquecimiento masivo' },
       { status: 500 }
     );
   }
@@ -75,6 +82,10 @@ export async function PATCH(request: NextRequest) {
 
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!isAdmin(session.user.role)) {
+      return NextResponse.json({ error: 'Solo administradores pueden confirmar/rechazar enriquecimiento masivo' }, { status: 403 });
     }
 
     const body = await request.json();
@@ -112,9 +123,9 @@ export async function PATCH(request: NextRequest) {
       return NextResponse.json({ success: true, ...result });
     }
   } catch (error) {
-    console.error('Batch confirm/reject error:', error);
+    logger.error('[Bulk Enrich] Batch confirm/reject error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error al procesar la accion' },
+      { error: 'Error al procesar la accion' },
       { status: 500 }
     );
   }
@@ -126,6 +137,10 @@ export async function GET() {
 
     if (!session?.user) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
+    }
+
+    if (!isAdmin(session.user.role)) {
+      return NextResponse.json({ error: 'Solo administradores pueden ver estadisticas de enriquecimiento masivo' }, { status: 403 });
     }
 
     // Get stats, pending clients, pending confirmation, and available AI providers
@@ -143,7 +158,7 @@ export async function GET() {
       availableAIProviders,
     });
   } catch (error) {
-    console.error('Get bulk enrichment stats error:', error);
+    logger.error('[Bulk Enrich] Get stats error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error al obtener estadisticas' },
       { status: 500 }

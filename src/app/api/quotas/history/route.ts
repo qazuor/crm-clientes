@@ -8,6 +8,7 @@ import {
   unauthorizedResponse,
   serverErrorResponse,
 } from '@/lib/api-response';
+import { quotaHistoryDaysSchema } from '@/lib/validations/enrichment';
 
 // GET /api/quotas/history - Get historical quota data
 export async function GET(request: Request) {
@@ -23,9 +24,19 @@ export async function GET(request: Request) {
     }
 
     const { searchParams } = new URL(request.url);
-    const days = parseInt(searchParams.get('days') || '7', 10);
+    const daysParam = searchParams.get('days') || '7';
+    const daysValidation = quotaHistoryDaysSchema.safeParse(daysParam);
 
-    const history = await getAllQuotasHistory(Math.min(days, 30)); // Max 30 days
+    if (!daysValidation.success) {
+      return errorResponse('Parametro "days" invalido. Debe ser un numero entero entre 1 y 30.', {
+        status: 400,
+        code: 'BAD_REQUEST',
+      });
+    }
+
+    const days = daysValidation.data;
+
+    const history = await getAllQuotasHistory(days);
     const alerts = await checkQuotaAlerts();
 
     logger.debug('Quota history fetched', { userId: session.user.id, days });

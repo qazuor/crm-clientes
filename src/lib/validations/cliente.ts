@@ -1,4 +1,5 @@
 import { z } from 'zod';
+import { PAGINATION } from '@/lib/constants';
 
 // Enum schemas
 export const EstadoClienteSchema = z.enum([
@@ -53,9 +54,12 @@ export const ClienteFiltersSchema = z.object({
   prioridad: PrioridadClienteSchema.optional(),
   fuente: FuenteClienteSchema.optional(),
   industria: z.string().max(100).optional(),
-  limit: z.coerce.number().min(1).max(100).default(10),
-  offset: z.coerce.number().min(0).default(0),
-  sortBy: z.string().optional().default('fechaCreacion'),
+  limit: z.coerce.number().min(1).max(PAGINATION.MAX_LIMIT).default(PAGINATION.DEFAULT_LIMIT),
+  offset: z.coerce.number().min(0).default(PAGINATION.DEFAULT_OFFSET),
+  sortBy: z.enum([
+    'fechaCreacion', 'fechaModific', 'nombre', 'email', 'estado',
+    'prioridad', 'industria', 'ciudad', 'ultimoContacto', 'ultimaIA',
+  ]).optional().default('fechaCreacion'),
   sortOrder: z.enum(['asc', 'desc']).default('desc'),
 });
 

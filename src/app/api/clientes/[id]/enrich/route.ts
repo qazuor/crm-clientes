@@ -14,16 +14,15 @@ import { UrlVerificationService } from '@/lib/services/url-verification-service'
 import { EnrichmentPostProcessor } from '@/lib/services/enrichment-post-processor';
 import { BulkEnrichmentService } from '@/lib/services/bulk-enrichment-service';
 import { WebsiteAnalysisService } from '@/lib/services/website-analysis-service';
-import { REVIEWABLE_FIELDS } from '@/types/enrichment';
+
 import type { ClientContext } from '@/lib/services/enrichment-prompts';
 import type { EnrichmentMode, FieldReviewStatus, ReviewableField } from '@/types/enrichment';
+import { enrichmentPostSchema, enrichmentPatchSchema } from '@/lib/validations/enrichment';
+import { ENRICHMENT } from '@/lib/constants';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
-
-// Cooldown threshold in hours (default 24h)
-const COOLDOWN_HOURS = 24;
 
 export async function POST(request: NextRequest, context: RouteContext) {
   const startTime = Date.now();
@@ -54,24 +53,51 @@ export async function POST(request: NextRequest, context: RouteContext) {
       return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
     }
 
-    // Get request body for options
-    let options: {
-      mode?: EnrichmentMode;
-      fields?: string[];
-      quick?: boolean;
-      provider?: string;
-      useExternalApis?: boolean;
-      verifyEmails?: boolean;
-      searchGoogleMaps?: boolean;
-      confidenceThreshold?: number;
-    } = {};
+    // Check for already in-progress enrichment to prevent race conditions
+    if (cliente.enrichmentStatus === 'PENDING') {
+      const inProgressEnrichment = await prisma.clienteEnrichment.findFirst({
+        where: {
+          clienteId: id,
+          status: 'PENDING',
+          // Consider enrichments started within the last 10 minutes as in-progress
+          enrichedAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+        },
+        orderBy: { enrichedAt: 'desc' },
+        select: { id: true, enrichedAt: true },
+      });
+
+      if (inProgressEnrichment) {
+        logger.warn('[Enrich API] Enrichment already in progress', {
+          clienteId: id,
+          enrichmentId: inProgressEnrichment.id,
+          enrichedAt: inProgressEnrichment.enrichedAt,
+        });
+        return NextResponse.json(
+          { error: 'Ya hay un enriquecimiento en progreso para este cliente' },
+          { status: 409 }
+        );
+      }
+    }
+
+    // Get request body for options (validated with Zod)
+    let rawBody: unknown = {};
     try {
-      options = await request.json();
+      rawBody = await request.json();
     } catch {
       // No body or invalid JSON - use defaults
     }
 
-    const mode: EnrichmentMode = options.mode || 'ai';
+    const validation = enrichmentPostSchema.safeParse(rawBody);
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0];
+      return NextResponse.json(
+        { error: firstError?.message ?? 'Opciones de enriquecimiento invalidas' },
+        { status: 400 }
+      );
+    }
+
+    const options = validation.data;
+    const mode: EnrichmentMode = (options.mode === 'full' ? 'ai' : options.mode) || 'ai';
 
     logger.info('[Enrich API] Enrichment options', {
       clienteId: id,
@@ -92,7 +118,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
     let hoursAgo: number | null = null;
     if (latestEnrichment?.enrichedAt) {
       hoursAgo = (Date.now() - latestEnrichment.enrichedAt.getTime()) / (1000 * 60 * 60);
-      if (hoursAgo < COOLDOWN_HOURS) {
+      if (hoursAgo < ENRICHMENT.COOLDOWN_HOURS) {
         cooldownWarning = true;
       }
     }
@@ -227,7 +253,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
             });
           }
         } catch (activityError) {
-          console.warn('Could not log activity:', activityError);
+          logger.warn('[Enrich API] Could not log activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
         }
       }
 
@@ -293,7 +319,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
       errorMessage: error instanceof Error ? error.message : 'Unknown error',
     });
     return NextResponse.json(
-      { error: error instanceof Error ? error.message : 'Error en enriquecimiento' },
+      { error: 'Error en enriquecimiento' },
       { status: 500 }
     );
   }
@@ -345,10 +371,18 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     // Build history entries
     const history = allEnrichments.map((e) => {
-      const providers = e.aiProvidersUsed ? JSON.parse(e.aiProvidersUsed) : [];
-      const statuses: Record<string, FieldReviewStatus> = e.fieldStatuses
-        ? JSON.parse(e.fieldStatuses)
-        : {};
+      let providers: string[] = [];
+      try {
+        providers = e.aiProvidersUsed ? JSON.parse(e.aiProvidersUsed) : [];
+      } catch {
+        logger.warn('[Enrich API] Failed to parse aiProvidersUsed', { enrichmentId: e.id });
+      }
+      let statuses: Record<string, FieldReviewStatus> = {};
+      try {
+        statuses = e.fieldStatuses ? JSON.parse(e.fieldStatuses) : {};
+      } catch {
+        logger.warn('[Enrich API] Failed to parse fieldStatuses', { enrichmentId: e.id });
+      }
       const statusValues = Object.values(statuses);
 
       return {
@@ -363,22 +397,26 @@ export async function GET(request: NextRequest, context: RouteContext) {
       };
     });
 
-    // Parse latest enrichment JSON fields
+    // Parse latest enrichment JSON fields (with safe parsing)
     let latestEnrichment = null;
     if (latestEnrichmentRaw) {
+      const safeJsonParse = (value: string | null, fieldName: string) => {
+        if (!value) return null;
+        try {
+          return JSON.parse(value);
+        } catch {
+          logger.warn('[Enrich API] Failed to parse JSON field', { fieldName, enrichmentId: latestEnrichmentRaw.id });
+          return null;
+        }
+      };
+
       latestEnrichment = {
         ...latestEnrichmentRaw,
-        emails: latestEnrichmentRaw.emails ? JSON.parse(latestEnrichmentRaw.emails) : null,
-        phones: latestEnrichmentRaw.phones ? JSON.parse(latestEnrichmentRaw.phones) : null,
-        socialProfiles: latestEnrichmentRaw.socialProfiles
-          ? JSON.parse(latestEnrichmentRaw.socialProfiles)
-          : null,
-        aiProvidersUsed: latestEnrichmentRaw.aiProvidersUsed
-          ? JSON.parse(latestEnrichmentRaw.aiProvidersUsed)
-          : null,
-        fieldStatuses: latestEnrichmentRaw.fieldStatuses
-          ? JSON.parse(latestEnrichmentRaw.fieldStatuses)
-          : null,
+        emails: safeJsonParse(latestEnrichmentRaw.emails, 'emails'),
+        phones: safeJsonParse(latestEnrichmentRaw.phones, 'phones'),
+        socialProfiles: safeJsonParse(latestEnrichmentRaw.socialProfiles, 'socialProfiles'),
+        aiProvidersUsed: safeJsonParse(latestEnrichmentRaw.aiProvidersUsed, 'aiProvidersUsed'),
+        fieldStatuses: safeJsonParse(latestEnrichmentRaw.fieldStatuses, 'fieldStatuses'),
       };
     }
 
@@ -389,7 +427,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
       enrichmentStatus: cliente.enrichmentStatus,
     });
   } catch (error) {
-    console.error('Get enrichment error:', error);
+    logger.error('[Enrich API] Get enrichment error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error al obtener enriquecimiento' },
       { status: 500 }
@@ -407,38 +445,18 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
     const body = await request.json();
-    const { action, fields, editedValues, enrichmentId } = body;
 
-    if (!action || !['confirm', 'reject', 'edit'].includes(action)) {
+    // Validate with Zod
+    const validation = enrichmentPatchSchema.safeParse(body);
+    if (!validation.success) {
+      const firstError = validation.error.issues?.[0];
       return NextResponse.json(
-        { error: 'Accion invalida. Usar "confirm", "reject" o "edit"' },
+        { error: firstError?.message ?? 'Datos invalidos' },
         { status: 400 }
       );
     }
 
-    if (!fields || !Array.isArray(fields) || fields.length === 0) {
-      return NextResponse.json(
-        { error: 'Se requiere una lista de campos (fields)' },
-        { status: 400 }
-      );
-    }
-
-    // Validate edited values for edit action
-    if (action === 'edit' && (!editedValues || typeof editedValues !== 'object')) {
-      return NextResponse.json(
-        { error: 'Se requiere editedValues para la accion "edit"' },
-        { status: 400 }
-      );
-    }
-
-    // Validate field names
-    const invalidFields = fields.filter((f: string) => !REVIEWABLE_FIELDS.includes(f as ReviewableField));
-    if (invalidFields.length > 0) {
-      return NextResponse.json(
-        { error: `Campos invalidos: ${invalidFields.join(', ')}` },
-        { status: 400 }
-      );
-    }
+    const { action, fields, editedValues, enrichmentId } = validation.data;
 
     // Get enrichment by ID or find latest PENDING for this client
     let enrichment;
@@ -490,7 +508,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       // Build update data for Cliente
       const allUpdateData: Record<string, unknown> = {};
 
-      if (action === 'edit') {
+      if (action === 'edit' && editedValues) {
         // Use edited values instead of AI-suggested values
         for (const field of pendingFields) {
           if (editedValues[field] !== undefined) {
@@ -579,7 +597,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         });
       }
     } catch (activityError) {
-      console.warn('Could not log field review activity:', activityError);
+      logger.warn('[Enrich API] Could not log field review activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
     }
 
     return NextResponse.json({
@@ -591,7 +609,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       enrichmentStatus: updatedEnrichment.status,
     });
   } catch (error) {
-    console.error('Patch enrichment error:', error);
+    logger.error('[Enrich API] Patch enrichment error', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error al procesar la accion' },
       { status: 500 }
