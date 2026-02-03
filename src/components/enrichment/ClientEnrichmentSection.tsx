@@ -1,6 +1,7 @@
 'use client';
 
 import { useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { useEnrichment } from '@/hooks/useEnrichment';
 import { EnrichmentSummary } from './EnrichmentSummary';
 import { WebsiteSummary } from './WebsiteSummary';
@@ -23,6 +24,7 @@ export function ClientEnrichmentSection({
   clienteNombre,
   sitioWeb,
 }: ClientEnrichmentSectionProps) {
+  const router = useRouter();
   const [modalOpen, setModalOpen] = useState(false);
   const [modalMode, setModalMode] = useState<'ai' | 'web' | undefined>(undefined);
   const enrichment = useEnrichment(clienteId);
@@ -35,6 +37,8 @@ export function ClientEnrichmentSection({
   const closeModal = () => {
     setModalOpen(false);
     setModalMode(undefined);
+    // Refresh page data after enrichment
+    router.refresh();
   };
 
   // Derive effective website: prop (server) OR confirmed via enrichment
