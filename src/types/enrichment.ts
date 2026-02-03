@@ -147,7 +147,15 @@ export const REVIEWABLE_FIELDS = [
   'address',
   'emails',
   'phones',
-  'socialProfiles',
+  'socialProfiles', // Legacy - all social profiles at once
+  // Individual social networks
+  'social_facebook',
+  'social_instagram',
+  'social_linkedin',
+  'social_twitter',
+  'social_whatsapp',
+  'social_youtube',
+  'social_tiktok',
 ] as const;
 
 export type ReviewableField = (typeof REVIEWABLE_FIELDS)[number];
