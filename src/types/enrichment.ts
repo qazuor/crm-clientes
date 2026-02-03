@@ -18,7 +18,7 @@ export type ApiKeyProvider = AIProvider | ExternalProvider;
 // AI Provider Models
 export const AI_PROVIDER_MODELS: Record<AIProvider, string[]> = {
   openai: ['gpt-4o', 'gpt-4o-mini', 'gpt-4-turbo', 'gpt-3.5-turbo'],
-  gemini: ['gemini-1.5-pro', 'gemini-1.5-flash', 'gemini-2.0-flash-exp'],
+  gemini: ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-2.0-flash'],
   grok: ['grok-beta', 'grok-2'],
   deepseek: ['deepseek-chat', 'deepseek-coder'],
 };

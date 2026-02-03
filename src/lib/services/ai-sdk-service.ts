@@ -398,7 +398,7 @@ export class AISdkService {
       case 'openai':
         return 'gpt-4o-mini';
       case 'gemini':
-        return 'gemini-1.5-flash';
+        return 'gemini-2.5-flash';
       case 'grok':
         return 'grok-beta';
       case 'deepseek':

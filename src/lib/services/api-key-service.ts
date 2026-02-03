@@ -225,7 +225,7 @@ export class ApiKeyService {
         id: 'env-gemini',
         provider: 'gemini' as ApiKeyProvider,
         apiKey: geminiKey,
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         enabled: true,
         lastUsedAt: null,
         createdAt: now,
