@@ -27,6 +27,8 @@ function ProviderRow({
   const [model, setModel] = useState('');
   const [enabled, setEnabled] = useState(existingKey?.enabled ?? true);
   const [showKey, setShowKey] = useState(false);
+  const [revealedKey, setRevealedKey] = useState<string | null>(null);
+  const [isRevealing, setIsRevealing] = useState(false);
   const [isDirty, setIsDirty] = useState(false);
   const [localSaving, setLocalSaving] = useState(false);
 
@@ -54,7 +56,42 @@ function ProviderRow({
 
   const handleApiKeyChange = (value: string) => {
     setApiKey(value);
+    setRevealedKey(null); // Clear revealed key when user types
     setIsDirty(value.length > 0 || !!(existingKey && enabled !== existingKey.enabled));
+  };
+
+  const handleToggleShowKey = async () => {
+    if (showKey) {
+      // Hiding the key
+      setShowKey(false);
+      setRevealedKey(null);
+      return;
+    }
+
+    // If there's text in the input, just toggle visibility
+    if (apiKey) {
+      setShowKey(true);
+      return;
+    }
+
+    // If there's an existing key, fetch the real value
+    if (existingKey) {
+      setIsRevealing(true);
+      try {
+        const response = await fetch(`/api/admin/api-keys/${existingKey.id}/reveal`);
+        const data = await response.json();
+        if (data.success && data.data?.apiKey) {
+          setRevealedKey(data.data.apiKey);
+          setShowKey(true);
+        }
+      } catch (error) {
+        console.error('Error revealing key:', error);
+      } finally {
+        setIsRevealing(false);
+      }
+    } else {
+      setShowKey(true);
+    }
   };
 
   const handleModelChange = (value: string) => {
@@ -129,19 +166,23 @@ function ProviderRow({
               <div className="relative">
                 <input
                   type={showKey ? 'text' : 'password'}
-                  value={apiKey}
+                  value={apiKey || (showKey && revealedKey ? revealedKey : '')}
                   onChange={(e) => handleApiKeyChange(e.target.value)}
                   placeholder={isConfigured ? existingKey.maskedKey : 'Ingresa tu API key...'}
-                  className="w-full rounded-md border border-gray-300 py-2 px-3 pr-10 text-sm font-mono text-gray-900 bg-white
+                  readOnly={showKey && !!revealedKey && !apiKey}
+                  className={`w-full rounded-md border border-gray-300 py-2 px-3 pr-10 text-sm font-mono text-gray-900 bg-white
                              focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500
-                             placeholder:text-gray-400"
+                             placeholder:text-gray-400 ${showKey && revealedKey && !apiKey ? 'bg-gray-50' : ''}`}
                 />
                 <button
                   type="button"
-                  onClick={() => setShowKey(!showKey)}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  onClick={handleToggleShowKey}
+                  disabled={isRevealing}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 disabled:opacity-50"
                 >
-                  {showKey ? (
+                  {isRevealing ? (
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-gray-300 border-t-gray-600" />
+                  ) : showKey ? (
                     <EyeSlashIcon className="h-4 w-4" />
                   ) : (
                     <EyeIcon className="h-4 w-4" />
