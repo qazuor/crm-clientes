@@ -82,6 +82,7 @@ export function EnrichmentModal({
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+  const [autoWebEnrichmentInProgress, setAutoWebEnrichmentInProgress] = useState(false);
 
   // Build review fields from latest enrichment
   const reviewFields = useMemo((): ReviewField[] => {
@@ -265,8 +266,29 @@ export function EnrichmentModal({
   }, [enrichment, cooldownConfirmed, isBulk, clienteIds]);
 
   const handleReviewConfirm = useCallback(
-    (fieldNames: string[]) => {
-      enrichment.confirmFields(fieldNames);
+    async (fieldNames: string[]) => {
+      await enrichment.confirmFields(fieldNames);
+
+      // Auto-trigger website enrichment if 'website' was confirmed and no analysis exists yet
+      const websiteWasConfirmed = fieldNames.includes('website');
+      const noExistingAnalysis = !enrichment.websiteAnalysis;
+      const hasWebsiteValue = !!enrichment.latestEnrichment?.website;
+
+      if (websiteWasConfirmed && noExistingAnalysis && hasWebsiteValue) {
+        // Show loading state for auto website analysis
+        setAutoWebEnrichmentInProgress(true);
+        try {
+          // Refetch to ensure we have the latest data after confirmation
+          await enrichment.refetch();
+          // Trigger website analysis automatically
+          await enrichment.enrichWeb();
+        } catch (err) {
+          // Don't block the confirmation flow if web enrichment fails
+          console.error('Auto website enrichment failed:', err);
+        } finally {
+          setAutoWebEnrichmentInProgress(false);
+        }
+      }
     },
     [enrichment]
   );
@@ -364,14 +386,22 @@ export function EnrichmentModal({
 
             {/* Review step: single-client */}
             {step === 'review' && !isBulk && (
-              <EnrichmentReview
-                fields={reviewFields}
-                confidenceThreshold={defaultThreshold}
-                onConfirm={handleReviewConfirm}
-                onReject={handleReviewReject}
-                onEdit={handleReviewEdit}
-                isReviewing={enrichment.isReviewing}
-              />
+              <>
+                {autoWebEnrichmentInProgress && (
+                  <div className="mb-4 flex items-center gap-2 rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-700">
+                    <div className="h-4 w-4 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
+                    <span>Analizando sitio web automáticamente...</span>
+                  </div>
+                )}
+                <EnrichmentReview
+                  fields={reviewFields}
+                  confidenceThreshold={defaultThreshold}
+                  onConfirm={handleReviewConfirm}
+                  onReject={handleReviewReject}
+                  onEdit={handleReviewEdit}
+                  isReviewing={enrichment.isReviewing || autoWebEnrichmentInProgress}
+                />
+              </>
             )}
 
             {/* Review step: bulk */}
