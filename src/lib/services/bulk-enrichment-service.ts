@@ -59,11 +59,13 @@ export class BulkEnrichmentService {
   /**
    * Build fieldStatuses JSON from enrichment data.
    * Only includes fields that have non-null values, all set to PENDING.
+   * Social profiles are split into individual network fields.
    */
   static buildFieldStatuses(enrichmentData: Record<string, unknown>): Record<string, FieldReviewStatus> {
     const statuses: Record<string, FieldReviewStatus> = {};
 
-    const fieldMapping: Record<ReviewableField, string | string[]> = {
+    // Basic fields mapping (excludes socialProfiles - handled separately)
+    const basicFieldMapping: Record<string, string | string[]> = {
       website: 'website',
       industry: 'industry',
       description: 'description',
@@ -71,10 +73,9 @@ export class BulkEnrichmentService {
       address: 'address',
       emails: 'emails',
       phones: 'phones',
-      socialProfiles: 'socialProfiles',
     };
 
-    for (const [field, keys] of Object.entries(fieldMapping)) {
+    for (const [field, keys] of Object.entries(basicFieldMapping)) {
       const keyList = Array.isArray(keys) ? keys : [keys];
       const hasData = keyList.some((k) => {
         const val = enrichmentData[k];
@@ -95,6 +96,41 @@ export class BulkEnrichmentService {
 
       if (hasData) {
         statuses[field] = 'PENDING';
+      }
+    }
+
+    // Handle socialProfiles - create individual entries for each network found
+    const socialProfilesRaw = enrichmentData.socialProfiles;
+    if (socialProfilesRaw) {
+      let profiles: Record<string, string> | null = null;
+
+      if (typeof socialProfilesRaw === 'string') {
+        try {
+          profiles = JSON.parse(socialProfilesRaw);
+        } catch {
+          profiles = null;
+        }
+      } else if (typeof socialProfilesRaw === 'object' && socialProfilesRaw !== null) {
+        profiles = socialProfilesRaw as Record<string, string>;
+      }
+
+      if (profiles) {
+        // Create individual status for each social network that has a value
+        const networkFieldMap: Record<string, string> = {
+          facebook: 'social_facebook',
+          instagram: 'social_instagram',
+          linkedin: 'social_linkedin',
+          twitter: 'social_twitter',
+          whatsapp: 'social_whatsapp',
+          youtube: 'social_youtube',
+          tiktok: 'social_tiktok',
+        };
+
+        for (const [network, fieldName] of Object.entries(networkFieldMap)) {
+          if (profiles[network] && typeof profiles[network] === 'string' && profiles[network].length > 0) {
+            statuses[fieldName] = 'PENDING';
+          }
+        }
       }
     }
 
@@ -163,6 +199,30 @@ export class BulkEnrichmentService {
         }
         break;
       // companySize: no direct client mapping (no field in Cliente model)
+      // Individual social network fields
+      case 'social_facebook':
+      case 'social_instagram':
+      case 'social_linkedin':
+      case 'social_twitter':
+      case 'social_whatsapp':
+      case 'social_youtube':
+      case 'social_tiktok': {
+        // Extract network name from field (e.g., 'social_facebook' -> 'facebook')
+        const network = field.replace('social_', '');
+        const profiles = enrichment.socialProfiles
+          ? typeof enrichment.socialProfiles === 'string'
+            ? JSON.parse(enrichment.socialProfiles)
+            : enrichment.socialProfiles
+          : null;
+        if (profiles && profiles[network]) {
+          // Map to client field name (facebook, instagram, linkedin, twitter, whatsapp)
+          // Note: youtube and tiktok don't have dedicated fields in Cliente model
+          if (['facebook', 'instagram', 'linkedin', 'twitter', 'whatsapp'].includes(network)) {
+            updateData[network] = profiles[network];
+          }
+        }
+        break;
+      }
     }
 
     return updateData;
