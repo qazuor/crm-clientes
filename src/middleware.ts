@@ -24,9 +24,10 @@ export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // ── Rate limiting for auth endpoints ──────────────────────────────
-  // Apply rate limiting to /api/auth paths (sign-in, sign-up, etc.)
-  // to mitigate brute-force and credential-stuffing attacks.
-  if (pathname.startsWith('/api/auth')) {
+  // Apply rate limiting to credential-based sign-in only.
+  // OAuth callbacks and session endpoints are excluded to avoid
+  // blocking legitimate social login flows.
+  if (pathname === '/api/auth/sign-in/email') {
     const ip = getClientIp(request);
     const result = authRateLimit(`auth:${ip}`);
 
@@ -45,12 +46,16 @@ export function middleware(request: NextRequest) {
       );
     }
 
-    // Attach rate limit headers even on successful requests
     const response = NextResponse.next();
     response.headers.set('X-RateLimit-Limit', '5');
     response.headers.set('X-RateLimit-Remaining', String(result.remaining));
     response.headers.set('X-RateLimit-Reset', String(result.reset));
     return response;
+  }
+
+  // Let all other /api/auth paths through (OAuth callbacks, session, etc.)
+  if (pathname.startsWith('/api/auth')) {
+    return NextResponse.next();
   }
 
   // ── Public paths (no auth required) ───────────────────────────────
@@ -59,7 +64,10 @@ export function middleware(request: NextRequest) {
   }
 
   // ── Session check for protected routes ────────────────────────────
-  const sessionCookie = request.cookies.get('better-auth.session_token');
+  // In production (HTTPS), Better Auth prefixes cookies with __Secure-
+  const sessionCookie =
+    request.cookies.get('better-auth.session_token') ||
+    request.cookies.get('__Secure-better-auth.session_token');
   if (!sessionCookie) {
     return NextResponse.redirect(new URL('/auth/login', request.url));
   }
