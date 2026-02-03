@@ -127,7 +127,16 @@ async function callOpenAICompatible(
       status: response.status,
       elapsed,
     });
-    throw new Error(`API error: ${response.status} - ${error}`);
+    // Provide descriptive error messages for common issues
+    const statusMessages: Record<number, string> = {
+      401: 'API key invalida o expirada',
+      402: 'Sin saldo - recarga tu cuenta del proveedor',
+      403: 'Acceso denegado - verifica permisos de la API key',
+      404: 'Modelo no encontrado - verifica que el modelo existe',
+      429: 'Rate limit excedido - espera un momento',
+    };
+    const statusMsg = statusMessages[response.status];
+    throw new Error(statusMsg ? `${statusMsg} (${response.status})` : `API error: ${response.status} - ${error}`);
   }
 
   const data = await response.json();
@@ -226,7 +235,16 @@ async function callGemini(
       status: response.status,
       elapsed,
     });
-    throw new Error(`Gemini API error: ${response.status} - ${error}`);
+    // Provide descriptive error messages for common issues
+    const statusMessages: Record<number, string> = {
+      400: 'Solicitud invalida - verifica los parametros',
+      401: 'API key invalida o expirada',
+      403: 'Acceso denegado - verifica permisos de la API key',
+      404: 'Modelo no encontrado - actualiza a gemini-2.5-flash',
+      429: 'Rate limit excedido - espera un momento',
+    };
+    const statusMsg = statusMessages[response.status];
+    throw new Error(statusMsg ? `Gemini: ${statusMsg} (${response.status})` : `Gemini API error: ${response.status} - ${error}`);
   }
 
   const data = await response.json();
