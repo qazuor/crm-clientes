@@ -18,13 +18,27 @@ const FIELD_LABELS: Record<string, string> = {
   address: 'Dirección',
   emails: 'Emails',
   phones: 'Teléfonos',
-  socialProfiles: 'Redes sociales',
+  // Individual social networks
+  social_facebook: 'Facebook',
+  social_instagram: 'Instagram',
+  social_linkedin: 'LinkedIn',
+  social_twitter: 'Twitter/X',
+  social_whatsapp: 'WhatsApp',
+  social_youtube: 'YouTube',
+  social_tiktok: 'TikTok',
 };
 
 const FIELD_TYPES: Record<string, 'text' | 'email' | 'phone' | 'url'> = {
   website: 'url',
   emails: 'email',
   phones: 'phone',
+  social_facebook: 'url',
+  social_instagram: 'url',
+  social_linkedin: 'url',
+  social_twitter: 'url',
+  social_whatsapp: 'text',
+  social_youtube: 'url',
+  social_tiktok: 'url',
 };
 
 interface EnrichmentModalProps {
@@ -148,31 +162,32 @@ export function EnrichmentModal({
       });
     }
 
+    // Individual social network fields
     if (
       latest.socialProfiles &&
       typeof latest.socialProfiles === 'object' &&
       Object.keys(latest.socialProfiles).length > 0
     ) {
-      const spStr = Object.entries(latest.socialProfiles)
-        .map(([k, v]) => `${k}: ${v}`)
-        .join(', ');
-      // Build current social profiles string
+      const profiles = latest.socialProfiles as Record<string, string>;
       const currentSp = current?.socialProfiles;
-      const currentSpStr = currentSp
-        ? Object.entries(currentSp)
-            .filter(([, v]) => v)
-            .map(([k, v]) => `${k}: ${v}`)
-            .join(', ') || null
-        : null;
-      fields.push({
-        name: 'socialProfiles',
-        label: FIELD_LABELS.socialProfiles,
-        currentValue: currentSpStr,
-        suggestedValue: spStr,
-        confidence: 0.6,
-        providers,
-        status: (statuses.socialProfiles as FieldReviewStatus) ?? 'PENDING',
-      });
+
+      // Create a field for each social network found
+      for (const [network, url] of Object.entries(profiles)) {
+        if (!url) continue;
+        const fieldName = `social_${network}`;
+        const currentValue = currentSp?.[network as keyof typeof currentSp] ?? null;
+
+        fields.push({
+          name: fieldName,
+          label: FIELD_LABELS[fieldName] ?? network.charAt(0).toUpperCase() + network.slice(1),
+          currentValue: currentValue,
+          suggestedValue: url,
+          confidence: 0.6,
+          providers,
+          status: (statuses[fieldName] as FieldReviewStatus) ?? 'PENDING',
+          fieldType: FIELD_TYPES[fieldName] ?? 'url',
+        });
+      }
     }
 
     return fields;
@@ -543,17 +558,19 @@ function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
     });
   }
 
+  // Individual social network fields
   if (item.socialProfiles && Object.keys(item.socialProfiles).length > 0) {
-    const spStr = Object.entries(item.socialProfiles)
-      .map(([k, v]) => `${k}: ${v}`)
-      .join(', ');
-    fields.push({
-      name: 'socialProfiles',
-      label: FIELD_LABELS.socialProfiles,
-      value: spStr,
-      score: 0.6,
-      status: statuses.socialProfiles ?? 'PENDING',
-    });
+    for (const [network, url] of Object.entries(item.socialProfiles)) {
+      if (!url) continue;
+      const fieldName = `social_${network}`;
+      fields.push({
+        name: fieldName,
+        label: FIELD_LABELS[fieldName] ?? network.charAt(0).toUpperCase() + network.slice(1),
+        value: url,
+        score: 0.6,
+        status: statuses[fieldName] ?? 'PENDING',
+      });
+    }
   }
 
   // Only return fields that are still PENDING
