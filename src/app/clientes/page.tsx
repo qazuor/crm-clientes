@@ -33,6 +33,7 @@ interface SearchParams {
   page?: string;
   mostrarFiltros?: string;
   columnas?: string;
+  vista?: 'cards' | 'table';
 }
 
 export default async function ClientesPage({
@@ -259,6 +260,7 @@ export default async function ClientesPage({
               sortField={sortField}
               sortOrder={sortOrder}
               columnasIniciales={params.columnas}
+              vistaInicial={params.vista}
             />
           </div>
           
