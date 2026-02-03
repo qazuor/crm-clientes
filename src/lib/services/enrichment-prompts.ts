@@ -36,7 +36,7 @@ IMPORTANT RULES:
 3. Include a confidence score (0.0 to 1.0) for each piece of information.
 4. If you cannot find information, use null for the value.
 5. For websites, always include the full URL with protocol (https://).
-6. For social profiles, include the full profile URL (e.g. https://instagram.com/handle). Try to infer social media handles from the business name, domain, or common naming patterns. Most businesses have at least Instagram or Facebook.
+6. For social profiles, include the full profile URL (e.g. https://instagram.com/handle). ONLY include social profiles you have VERIFIED exist - do NOT guess or infer handles based on business names. If you cannot confirm a profile exists, do not include it.
 7. Be specific and accurate - quality over quantity.
 8. Cite your reasoning in the "source" field when applicable.
 9. ALL text values in the response (descriptions, industry names, sources, reasoning) MUST be written in Spanish. Do not use English for any text content.
@@ -68,7 +68,7 @@ export function getEnrichmentPrompt(client: ClientContext, fieldsToEnrich: strin
     description: 'Brief company description (2-3 sentences)',
     industry: 'Industry/sector classification',
     companySize: 'Company size (startup, small, medium, large, enterprise)',
-    socialProfiles: 'Social media profile URLs. Look for: instagram, facebook, linkedin, twitter (x.com), youtube, tiktok. Return as object with platform names as keys and full profile URLs as values. Infer handles from the business name, website domain, or known patterns (e.g. instagram.com/{businessname}). Include only profiles you believe exist.',
+    socialProfiles: 'Social media profile URLs. Look for: instagram, facebook, linkedin, twitter (x.com), youtube, tiktok. Return as object with platform names as keys and full profile URLs as values. ONLY include profiles you can VERIFY exist - do NOT guess or infer handles. If you find a link on the company website or can confirm the profile exists, include it. Otherwise, omit it.',
   };
 
   const requestedFields = fieldsToEnrich
@@ -84,7 +84,7 @@ ${requestedFields}
 
 IMPORTANT:
 - All text content (descriptions, industry names, source/reasoning explanations) MUST be written in Spanish.
-- For social profiles, try common patterns: instagram.com/{name}, facebook.com/{name}, linkedin.com/company/{name}. Use the business name or website domain as hints for handles.
+- For social profiles: ONLY include profiles you can verify exist. Do NOT guess or infer handles based on business names. If you found the link on the company website or have evidence the profile exists, include it. Otherwise, leave it out.
 
 Respond with a JSON object containing:
 {
