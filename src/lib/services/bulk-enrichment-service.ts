@@ -123,7 +123,46 @@ export class BulkEnrichmentService {
       case 'address':
         if (enrichment.address) updateData.direccion = enrichment.address;
         break;
-      // emails, phones, socialProfiles, companySize: no direct client mapping
+      case 'socialProfiles':
+        if (enrichment.socialProfiles) {
+          const profiles =
+            typeof enrichment.socialProfiles === 'string'
+              ? JSON.parse(enrichment.socialProfiles)
+              : enrichment.socialProfiles;
+          if (profiles.facebook) updateData.facebook = profiles.facebook;
+          if (profiles.instagram) updateData.instagram = profiles.instagram;
+          if (profiles.linkedin) updateData.linkedin = profiles.linkedin;
+          if (profiles.twitter) updateData.twitter = profiles.twitter;
+          if (profiles.whatsapp) updateData.whatsapp = profiles.whatsapp;
+        }
+        break;
+      case 'emails':
+        if (enrichment.emails) {
+          const emailsArray =
+            typeof enrichment.emails === 'string'
+              ? JSON.parse(enrichment.emails)
+              : enrichment.emails;
+          if (Array.isArray(emailsArray) && emailsArray.length > 0) {
+            const firstEmail = emailsArray[0];
+            const emailValue = firstEmail.value ?? firstEmail.email ?? firstEmail;
+            if (typeof emailValue === 'string') updateData.email = emailValue;
+          }
+        }
+        break;
+      case 'phones':
+        if (enrichment.phones) {
+          const phonesArray =
+            typeof enrichment.phones === 'string'
+              ? JSON.parse(enrichment.phones)
+              : enrichment.phones;
+          if (Array.isArray(phonesArray) && phonesArray.length > 0) {
+            const firstPhone = phonesArray[0];
+            const phoneValue = firstPhone.value ?? firstPhone.number ?? firstPhone;
+            if (typeof phoneValue === 'string') updateData.telefono = phoneValue;
+          }
+        }
+        break;
+      // companySize: no direct client mapping (no field in Cliente model)
     }
 
     return updateData;
