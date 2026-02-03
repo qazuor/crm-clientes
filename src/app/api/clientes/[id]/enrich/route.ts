@@ -279,10 +279,12 @@ export async function POST(request: NextRequest, context: RouteContext) {
         );
       }
 
-      const analysisResult = await WebsiteAnalysisService.quickAnalysis(
-        id,
-        cliente.sitioWeb
-      );
+      // Run full website analysis (settings determine which analyses are enabled)
+      const analysisResult = await WebsiteAnalysisService.analyzeWebsite({
+        clienteId: id,
+        url: cliente.sitioWeb,
+        // All options use defaults from SettingsService
+      });
 
       // Log activity
       if (session.user.id) {
