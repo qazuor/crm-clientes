@@ -504,12 +504,17 @@ type PendingConfirmationItem = {
   aiProvidersUsed: string[] | null;
   enrichedAt: string | null;
   fieldStatuses: Record<string, string> | null;
+  // Current client values for comparison
+  currentWebsite: string | null;
+  currentIndustry: string | null;
+  currentDescription: string | null;
 };
 
 interface AccordionFieldInfo {
   name: string;
   label: string;
   value: string;
+  currentValue: string | null;
   score: number;
   status: string;
 }
@@ -519,22 +524,37 @@ function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
   const fields: AccordionFieldInfo[] = [];
   const statuses = item.fieldStatuses ?? {};
 
-  const add = (name: string, value: string | null | undefined, score: number | null | undefined) => {
+  // Helper to check if values are different (normalize for comparison)
+  const isDifferent = (current: string | null | undefined, suggested: string | null | undefined): boolean => {
+    const c = (current ?? '').trim().toLowerCase();
+    const s = (suggested ?? '').trim().toLowerCase();
+    return c !== s;
+  };
+
+  const add = (
+    name: string,
+    value: string | null | undefined,
+    currentValue: string | null | undefined,
+    score: number | null | undefined
+  ) => {
     if (!value) return;
+    // Skip if values are the same
+    if (!isDifferent(currentValue, value)) return;
     fields.push({
       name,
       label: FIELD_LABELS[name] ?? name,
       value,
+      currentValue: currentValue ?? null,
       score: score ?? 0,
       status: statuses[name] ?? 'PENDING',
     });
   };
 
-  add('website', item.website, item.websiteScore);
-  add('industry', item.industry, item.industryScore);
-  add('description', item.description, item.descriptionScore);
-  add('companySize', item.companySize, item.companySizeScore);
-  add('address', item.address, item.addressScore);
+  add('website', item.website, item.currentWebsite, item.websiteScore);
+  add('industry', item.industry, item.currentIndustry, item.industryScore);
+  add('description', item.description, item.currentDescription, item.descriptionScore);
+  add('companySize', item.companySize, null, item.companySizeScore);
+  add('address', item.address, null, item.addressScore);
 
   if (item.emails && item.emails.length > 0) {
     const emailStr = item.emails.map((e) => e.email).join(', ');
@@ -542,6 +562,7 @@ function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
       name: 'emails',
       label: FIELD_LABELS.emails,
       value: emailStr,
+      currentValue: null,
       score: 0.7,
       status: statuses.emails ?? 'PENDING',
     });
@@ -553,6 +574,7 @@ function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
       name: 'phones',
       label: FIELD_LABELS.phones,
       value: phoneStr,
+      currentValue: null,
       score: 0.7,
       status: statuses.phones ?? 'PENDING',
     });
@@ -567,6 +589,7 @@ function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
         name: fieldName,
         label: FIELD_LABELS[fieldName] ?? network.charAt(0).toUpperCase() + network.slice(1),
         value: url,
+        currentValue: null,
         score: 0.6,
         status: statuses[fieldName] ?? 'PENDING',
       });
@@ -830,8 +853,8 @@ function BulkAccordionReview({
                                 <span className="text-sm font-medium text-gray-900">{field.label}</span>
                                 <ConfidenceBadge score={field.score} />
                               </div>
-                              <span className="mt-0.5 text-xs text-gray-500 truncate">
-                                {field.value.length > 80 ? field.value.slice(0, 80) + '...' : field.value}
+                              <span className="mt-0.5 text-xs text-gray-700 break-words">
+                                {field.value}
                               </span>
                             </div>
                           </label>

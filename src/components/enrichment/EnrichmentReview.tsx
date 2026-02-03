@@ -59,7 +59,18 @@ export function EnrichmentReview({
   const [currentStep, setCurrentStep] = useState(0);
   const [decisions, setDecisions] = useState<Record<string, 'confirm' | 'reject' | 'edit'>>({});
 
-  const pendingFields = useMemo(() => fields.filter((f) => f.status === 'PENDING'), [fields]);
+  // Filter pending fields, excluding those where current and suggested values are identical
+  const pendingFields = useMemo(() => {
+    return fields.filter((f) => {
+      if (f.status !== 'PENDING') return false;
+      // Normalize values for comparison (trim, lowercase, treat null/empty as equal)
+      const current = (f.currentValue ?? '').trim().toLowerCase();
+      const suggested = (f.suggestedValue ?? '').trim().toLowerCase();
+      // Skip if values are the same
+      if (current === suggested) return false;
+      return true;
+    });
+  }, [fields]);
   const reviewedFields = useMemo(() => fields.filter((f) => f.status !== 'PENDING'), [fields]);
 
   // Quick mode toggle
@@ -214,14 +225,19 @@ export function EnrichmentReview({
                 disabled={isReviewing}
                 className="rounded text-blue-600"
               />
-              <div className="flex flex-1 flex-col">
+              <div className="flex flex-1 flex-col min-w-0">
                 <div className="flex items-center gap-2">
                   <span className="text-sm font-medium text-gray-900">{field.label}</span>
                   <ConfidenceBadge score={field.confidence} />
                 </div>
-                <span className="mt-0.5 text-xs text-gray-500 line-clamp-1">
-                  {field.currentValue || '(vacío)'} → {field.suggestedValue}
-                </span>
+                <div className="mt-1 text-xs text-gray-500 break-words">
+                  {field.currentValue ? (
+                    <span className="block text-gray-400 line-through">{field.currentValue}</span>
+                  ) : (
+                    <span className="block text-gray-400 italic">(vacío)</span>
+                  )}
+                  <span className="block text-gray-700">{field.suggestedValue}</span>
+                </div>
               </div>
             </label>
           ))}
