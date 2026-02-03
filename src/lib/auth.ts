@@ -95,6 +95,14 @@ export const betterAuthInstance = betterAuth({
       maxAge: 5 * 60, // 5 min cache
     },
   },
+  rateLimit: {
+    window: 60,
+    max: 30,
+    customRules: {
+      '/sign-in/social': { window: 60, max: 10 },
+      '/callback/*': { window: 60, max: 10 },
+    },
+  },
   advanced: {
     cookiePrefix: 'better-auth',
     // Better Auth sets SameSite=Lax, HttpOnly, and Secure (in production)
