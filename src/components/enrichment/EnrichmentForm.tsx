@@ -17,6 +17,8 @@ interface EnrichmentFormProps {
   defaultConfidenceThreshold: number;
   availableProviders?: string[];
   isLoading: boolean;
+  /** Pre-selected mode to highlight */
+  defaultMode?: 'ai' | 'web';
 }
 
 const ALL_PROVIDERS: { value: AIProvider | 'auto'; label: string }[] = [
@@ -37,6 +39,7 @@ export function EnrichmentForm({
   defaultConfidenceThreshold,
   availableProviders,
   isLoading,
+  defaultMode,
 }: EnrichmentFormProps) {
   const [provider, setProvider] = useState<AIProvider | 'auto'>('auto');
   const [quick, setQuick] = useState(false);
@@ -179,7 +182,11 @@ export function EnrichmentForm({
           type="button"
           onClick={handleSubmitAI}
           disabled={isLoading}
-          className="flex-1 rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700 disabled:opacity-50"
+          className={`flex-1 rounded px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+            defaultMode === 'web'
+              ? 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+              : 'bg-blue-600 text-white hover:bg-blue-700'
+          }`}
         >
           {isLoading ? 'Enriqueciendo...' : 'Enriquecer con IA'}
         </button>
@@ -188,7 +195,11 @@ export function EnrichmentForm({
           onClick={onSubmitWeb}
           disabled={isLoading || !clientHasWebsite}
           title={!clientHasWebsite ? 'El cliente no tiene sitio web configurado' : undefined}
-          className="flex-1 rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+          className={`flex-1 rounded px-4 py-2 text-sm font-medium disabled:opacity-50 ${
+            defaultMode === 'web'
+              ? 'bg-blue-600 text-white hover:bg-blue-700'
+              : 'border border-gray-300 text-gray-700 hover:bg-gray-50'
+          }`}
         >
           Analizar Web
         </button>
