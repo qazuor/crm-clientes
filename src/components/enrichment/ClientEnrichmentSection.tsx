@@ -24,7 +24,18 @@ export function ClientEnrichmentSection({
   sitioWeb,
 }: ClientEnrichmentSectionProps) {
   const [modalOpen, setModalOpen] = useState(false);
+  const [modalMode, setModalMode] = useState<'ai' | 'web' | undefined>(undefined);
   const enrichment = useEnrichment(clienteId);
+
+  const openModal = (mode?: 'ai' | 'web') => {
+    setModalMode(mode);
+    setModalOpen(true);
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    setModalMode(undefined);
+  };
 
   // Derive effective website: prop (server) OR confirmed via enrichment
   const effectiveSitioWeb =
@@ -44,7 +55,7 @@ export function ClientEnrichmentSection({
           </h3>
           <button
             type="button"
-            onClick={() => setModalOpen(true)}
+            onClick={() => openModal()}
             className="rounded bg-purple-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-purple-700"
           >
             Enriquecer
@@ -53,7 +64,7 @@ export function ClientEnrichmentSection({
         <div className="p-4">
           <EnrichmentSummary
             clienteId={clienteId}
-            onEnrich={() => setModalOpen(true)}
+            onEnrich={() => openModal()}
           />
         </div>
       </div>
@@ -67,7 +78,11 @@ export function ClientEnrichmentSection({
               Analisis de Sitio Web
             </h3>
           </div>
-          <WebsiteSummary clienteId={clienteId} sitioWeb={effectiveSitioWeb} />
+          <WebsiteSummary
+            clienteId={clienteId}
+            sitioWeb={effectiveSitioWeb}
+            onEnrichWeb={() => openModal('web')}
+          />
         </div>
       )}
 
@@ -77,10 +92,11 @@ export function ClientEnrichmentSection({
       {/* Enrichment Modal */}
       <EnrichmentModal
         isOpen={modalOpen}
-        onClose={() => setModalOpen(false)}
+        onClose={closeModal}
         clienteIds={[clienteId]}
         clienteNames={[clienteNombre]}
         clientHasWebsite={!!effectiveSitioWeb}
+        defaultMode={modalMode}
       />
     </>
   );

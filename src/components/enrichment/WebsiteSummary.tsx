@@ -7,13 +7,14 @@ import { useEnrichment } from '@/hooks/useEnrichment';
 interface WebsiteSummaryProps {
   clienteId: string;
   sitioWeb: string | null;
+  onEnrichWeb?: () => void;
 }
 
 /**
  * Displays website analysis summary on the client detail page.
  * Only rendered if client has a website URL.
  */
-export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
+export function WebsiteSummary({ clienteId, sitioWeb, onEnrichWeb }: WebsiteSummaryProps) {
   const { websiteAnalysis, isLoading } = useEnrichment(clienteId);
   const [expanded, setExpanded] = useState<string | null>(null);
 
@@ -37,6 +38,15 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
       <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-center">
         <p className="text-sm text-gray-500">No hay análisis web disponible</p>
         <p className="mt-1 text-xs text-gray-400">{sitioWeb}</p>
+        {onEnrichWeb && (
+          <button
+            type="button"
+            onClick={onEnrichWeb}
+            className="mt-3 rounded bg-blue-600 px-3 py-1.5 text-xs font-medium text-white hover:bg-blue-700"
+          >
+            Analizar Sitio Web
+          </button>
+        )}
       </div>
     );
   }
@@ -72,14 +82,25 @@ export function WebsiteSummary({ clienteId, sitioWeb }: WebsiteSummaryProps) {
       {/* Header */}
       <div className="flex items-center justify-between border-b border-gray-200 px-4 py-3">
         <h3 className="text-sm font-semibold text-gray-900">Análisis Web</h3>
-        <a
-          href={wa.url}
-          target="_blank"
-          rel="noopener noreferrer"
-          className="text-xs text-blue-600 hover:underline"
-        >
-          {wa.url}
-        </a>
+        <div className="flex items-center gap-3">
+          <a
+            href={wa.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs text-blue-600 hover:underline"
+          >
+            {wa.url}
+          </a>
+          {onEnrichWeb && (
+            <button
+              type="button"
+              onClick={onEnrichWeb}
+              className="rounded bg-blue-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-blue-700"
+            >
+              Actualizar
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Quick metrics */}

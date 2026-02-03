@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useEffect, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
 import { XMarkIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
 import { useEnrichment, type BatchFieldItem } from '@/hooks/useEnrichment';
@@ -36,6 +36,8 @@ interface EnrichmentModalProps {
   clienteNames: string[];
   /** Whether client has a website URL (single-client mode) */
   clientHasWebsite?: boolean;
+  /** Pre-selected mode to auto-execute on open */
+  defaultMode?: 'ai' | 'web';
 }
 
 type ModalStep = 'form' | 'loading' | 'review' | 'done';
@@ -65,6 +67,7 @@ export function EnrichmentModal({
   clienteIds,
   clienteNames,
   clientHasWebsite = false,
+  defaultMode,
 }: EnrichmentModalProps) {
   const isBulk = clienteIds.length > 1;
   const singleClienteId = isBulk ? undefined : clienteIds[0];
@@ -79,6 +82,9 @@ export function EnrichmentModal({
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
+
+  // Track if we already auto-executed defaultMode to prevent re-runs
+  const autoExecutedRef = useRef(false);
 
   // Build review fields from latest enrichment
   const reviewFields = useMemo((): ReviewField[] => {
@@ -287,8 +293,20 @@ export function EnrichmentModal({
     setCooldownConfirmed(false);
     setEnrichError(null);
     setBulkResult(null);
+    autoExecutedRef.current = false;
     onClose();
   };
+
+  // Auto-execute when defaultMode is set and modal opens
+  useEffect(() => {
+    if (isOpen && defaultMode === 'web' && !autoExecutedRef.current && effectiveHasWebsite) {
+      autoExecutedRef.current = true;
+      // Use setTimeout to avoid synchronous setState in effect
+      setTimeout(() => {
+        handleSubmitWeb();
+      }, 0);
+    }
+  }, [isOpen, defaultMode, effectiveHasWebsite, handleSubmitWeb]);
 
   // Title
   const title = isBulk
