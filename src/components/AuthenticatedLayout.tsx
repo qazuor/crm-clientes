@@ -17,15 +17,13 @@ interface AuthenticatedLayoutProps {
 export default function AuthenticatedLayout({
   children,
   currentPath = '/',
-  userRole
+  userRole: _userRole
 }: AuthenticatedLayoutProps) {
   const isActive = (path: string) => {
     if (path === '/' && currentPath === '/') return true;
     if (path !== '/' && currentPath.startsWith(path)) return true;
     return false;
   };
-
-  const isAdmin = userRole === 'ADMIN';
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -69,19 +67,17 @@ export default function AuthenticatedLayout({
                 >
                   Actividades
                 </Link>
-                {isAdmin && (
-                  <Link
-                    href="/admin/settings"
-                    className={`flex items-center gap-1 ${
-                      isActive('/admin/settings')
-                        ? 'text-blue-600 font-medium'
-                        : 'text-gray-500 hover:text-gray-900'
-                    }`}
-                  >
-                    <Cog6ToothIcon className="h-4 w-4" />
-                    Settings
-                  </Link>
-                )}
+                <Link
+                  href="/admin/settings"
+                  className={`flex items-center gap-1 ${
+                    isActive('/admin/settings')
+                      ? 'text-blue-600 font-medium'
+                      : 'text-gray-500 hover:text-gray-900'
+                  }`}
+                >
+                  <Cog6ToothIcon className="h-4 w-4" />
+                  Settings
+                </Link>
               </nav>
             </div>
             <div className="flex items-center space-x-4">
