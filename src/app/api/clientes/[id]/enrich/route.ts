@@ -337,10 +337,24 @@ export async function GET(request: NextRequest, context: RouteContext) {
 
     const { id } = await context.params;
 
-    // Get client with enrichmentStatus
+    // Get client with enrichmentStatus and current field values
     const cliente = await prisma.cliente.findUnique({
       where: { id },
-      select: { enrichmentStatus: true },
+      select: {
+        enrichmentStatus: true,
+        // Current values for comparison in review UI
+        sitioWeb: true,
+        industria: true,
+        notas: true, // Used as description
+        direccion: true,
+        email: true,
+        telefono: true,
+        facebook: true,
+        instagram: true,
+        linkedin: true,
+        twitter: true,
+        whatsapp: true,
+      },
     });
 
     if (!cliente) {
@@ -422,11 +436,29 @@ export async function GET(request: NextRequest, context: RouteContext) {
       };
     }
 
+    // Build current client values for comparison in review UI
+    const currentClientValues = {
+      website: cliente.sitioWeb,
+      industry: cliente.industria,
+      description: cliente.notas, // notas field is used as description
+      address: cliente.direccion,
+      email: cliente.email,
+      phone: cliente.telefono,
+      socialProfiles: {
+        facebook: cliente.facebook,
+        instagram: cliente.instagram,
+        linkedin: cliente.linkedin,
+        twitter: cliente.twitter,
+        whatsapp: cliente.whatsapp,
+      },
+    };
+
     return NextResponse.json({
       latestEnrichment,
       websiteAnalysis,
       history,
       enrichmentStatus: cliente.enrichmentStatus,
+      currentClientValues,
     });
   } catch (error) {
     logger.error('[Enrich API] Get enrichment error', error instanceof Error ? error : new Error(String(error)));

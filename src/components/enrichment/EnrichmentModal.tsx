@@ -89,6 +89,7 @@ export function EnrichmentModal({
     const latest = enrichment.latestEnrichment;
     if (!latest) return [];
     const statuses = enrichment.fieldStatuses ?? {};
+    const current = enrichment.currentClientValues;
 
     const fields: ReviewField[] = [];
     const providers = latest.aiProvidersUsed ?? [];
@@ -112,11 +113,11 @@ export function EnrichmentModal({
       });
     };
 
-    addField('website', latest.website, latest.websiteScore, null);
-    addField('industry', latest.industry, latest.industryScore, null);
-    addField('description', latest.description, latest.descriptionScore, null);
-    addField('companySize', latest.companySize, latest.companySizeScore, null);
-    addField('address', latest.address, latest.addressScore, null);
+    addField('website', latest.website, latest.websiteScore, current?.website);
+    addField('industry', latest.industry, latest.industryScore, current?.industry);
+    addField('description', latest.description, latest.descriptionScore, current?.description);
+    addField('companySize', latest.companySize, latest.companySizeScore, null); // No current field for this
+    addField('address', latest.address, latest.addressScore, current?.address);
 
     // Array/object fields - show as stringified
     if (latest.emails && Array.isArray(latest.emails) && latest.emails.length > 0) {
@@ -124,7 +125,7 @@ export function EnrichmentModal({
       fields.push({
         name: 'emails',
         label: FIELD_LABELS.emails,
-        currentValue: null,
+        currentValue: current?.email ?? null,
         suggestedValue: emailStr,
         confidence: 0.7,
         providers,
@@ -138,7 +139,7 @@ export function EnrichmentModal({
       fields.push({
         name: 'phones',
         label: FIELD_LABELS.phones,
-        currentValue: null,
+        currentValue: current?.phone ?? null,
         suggestedValue: phoneStr,
         confidence: 0.7,
         providers,
@@ -155,10 +156,18 @@ export function EnrichmentModal({
       const spStr = Object.entries(latest.socialProfiles)
         .map(([k, v]) => `${k}: ${v}`)
         .join(', ');
+      // Build current social profiles string
+      const currentSp = current?.socialProfiles;
+      const currentSpStr = currentSp
+        ? Object.entries(currentSp)
+            .filter(([, v]) => v)
+            .map(([k, v]) => `${k}: ${v}`)
+            .join(', ') || null
+        : null;
       fields.push({
         name: 'socialProfiles',
         label: FIELD_LABELS.socialProfiles,
-        currentValue: null,
+        currentValue: currentSpStr,
         suggestedValue: spStr,
         confidence: 0.6,
         providers,
@@ -167,7 +176,7 @@ export function EnrichmentModal({
     }
 
     return fields;
-  }, [enrichment.latestEnrichment, enrichment.fieldStatuses]);
+  }, [enrichment.latestEnrichment, enrichment.fieldStatuses, enrichment.currentClientValues]);
 
   // Default confidence threshold (could come from settings, default 0.6)
   const defaultThreshold = 0.6;

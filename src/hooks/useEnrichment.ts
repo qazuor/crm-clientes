@@ -25,12 +25,30 @@ import type {
 
 // ─── API response shapes ───────────────────────────────────────────────
 
+/** Current client values for comparison in review UI */
+interface CurrentClientValues {
+  website: string | null;
+  industry: string | null;
+  description: string | null;
+  address: string | null;
+  email: string | null;
+  phone: string | null;
+  socialProfiles: {
+    facebook: string | null;
+    instagram: string | null;
+    linkedin: string | null;
+    twitter: string | null;
+    whatsapp: string | null;
+  };
+}
+
 /** GET /api/clientes/[id]/enrich */
 interface EnrichmentGetResponse {
   latestEnrichment: ClienteEnrichmentData | null;
   websiteAnalysis: WebsiteAnalysisData | null;
   history: EnrichmentHistoryEntry[];
   enrichmentStatus: EnrichmentStatusEnum;
+  currentClientValues?: CurrentClientValues;
 }
 
 /** POST /api/clientes/[id]/enrich  (mode=ai) */
@@ -331,6 +349,7 @@ export function useEnrichment(clienteId?: string) {
   const websiteAnalysis = dataQuery.data?.websiteAnalysis ?? null;
   const history = dataQuery.data?.history ?? [];
   const enrichmentStatus = dataQuery.data?.enrichmentStatus ?? ('NONE' as EnrichmentStatusEnum);
+  const currentClientValues = dataQuery.data?.currentClientValues ?? null;
 
   const fieldStatuses: Record<string, FieldReviewStatus> | null = (() => {
     if (!latestEnrichment) return null;
@@ -398,6 +417,7 @@ export function useEnrichment(clienteId?: string) {
     fieldStatuses,
     pendingFields,
     cooldown,
+    currentClientValues,
     isPending: latestEnrichment?.status === 'PENDING',
     isLoading: dataQuery.isLoading,
     isError: dataQuery.isError,
