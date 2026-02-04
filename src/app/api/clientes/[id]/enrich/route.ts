@@ -11,6 +11,7 @@ import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
 import { ConsensusService, type EnrichmentResult } from '@/lib/services/consensus-service';
 import { UrlVerificationService } from '@/lib/services/url-verification-service';
+import { SocialUrlValidatorService } from '@/lib/services/social-url-validator-service';
 import { EnrichmentPostProcessor } from '@/lib/services/enrichment-post-processor';
 import { BulkEnrichmentService } from '@/lib/services/bulk-enrichment-service';
 import { WebsiteAnalysisService } from '@/lib/services/website-analysis-service';
@@ -161,6 +162,74 @@ export async function POST(request: NextRequest, context: RouteContext) {
               1.0
             ),
           };
+        }
+      }
+
+      // Validate social network URLs from socialProfiles object
+      if (result.socialProfiles?.value && typeof result.socialProfiles.value === 'object') {
+        const socialValidation = await SocialUrlValidatorService.validateSocialUrls(
+          result.socialProfiles.value as Record<string, string>
+        );
+
+        // Keep only accessible URLs
+        if (Object.keys(socialValidation.validatedProfiles).length > 0) {
+          result.socialProfiles = {
+            ...result.socialProfiles,
+            value: socialValidation.validatedProfiles,
+          };
+        } else {
+          // No valid URLs found - remove the field entirely
+          result.socialProfiles = undefined;
+        }
+
+        logger.info('[Enrich API] Social profiles validation complete', {
+          clienteId: id,
+          totalUrls: socialValidation.totalCount,
+          accessibleUrls: socialValidation.accessibleCount,
+          removedUrls: socialValidation.totalCount - socialValidation.accessibleCount,
+        });
+      }
+
+      // Validate individual social_* fields
+      const socialFields = [
+        'social_facebook',
+        'social_instagram',
+        'social_linkedin',
+        'social_twitter',
+        'social_whatsapp',
+        'social_youtube',
+        'social_tiktok',
+      ] as const;
+
+      const fieldsToValidate: Record<string, { value?: string | null }> = {};
+      for (const fieldName of socialFields) {
+        const field = result[fieldName as keyof typeof result] as { value?: string | null } | undefined;
+        if (field?.value) {
+          fieldsToValidate[fieldName] = field;
+        }
+      }
+
+      if (Object.keys(fieldsToValidate).length > 0) {
+        const individualValidation = await SocialUrlValidatorService.validateIndividualSocialFields(
+          fieldsToValidate
+        );
+
+        // Update or remove fields based on validation results
+        for (const fieldName of socialFields) {
+          const validatedUrl = individualValidation[fieldName];
+          if (validatedUrl === null) {
+            // URL was not accessible - remove the field
+            (result as Record<string, unknown>)[fieldName] = undefined;
+          } else if (validatedUrl) {
+            // URL was accessible - update with validated URL
+            const existingField = result[fieldName as keyof typeof result] as { value?: string; score?: number } | undefined;
+            if (existingField) {
+              (result as Record<string, unknown>)[fieldName] = {
+                ...existingField,
+                value: validatedUrl,
+              };
+            }
+          }
         }
       }
 
