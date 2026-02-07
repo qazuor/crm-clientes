@@ -42,6 +42,9 @@ const envSchema = z.object({
   QUOTA_SERPAPI_DAILY: z.coerce.number().positive().default(3),
   QUOTA_BUILTWITH_DAILY: z.coerce.number().positive().default(166),
 
+  // Encryption
+  ENCRYPTION_SALT: z.string().min(16, 'ENCRYPTION_SALT must be at least 16 characters').optional(),
+
   // Logging
   LOG_LEVEL: z.enum(['debug', 'info', 'warn', 'error']).default('info'),
 

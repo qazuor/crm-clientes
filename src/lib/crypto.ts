@@ -2,6 +2,7 @@
 // Uses BETTER_AUTH_SECRET as the base for key derivation
 
 import { createCipheriv, createDecipheriv, randomBytes, scryptSync } from 'crypto';
+import { env } from '@/lib/env';
 
 const ALGORITHM = 'aes-256-gcm';
 const IV_LENGTH = 16;
@@ -10,7 +11,7 @@ const KEY_LENGTH = 32; // 256 bits
 const DEFAULT_SALT = 'crm-api-keys-salt';
 
 function getSalt(): string {
-  return process.env.ENCRYPTION_SALT || DEFAULT_SALT;
+  return env.ENCRYPTION_SALT || DEFAULT_SALT;
 }
 
 function getEncryptionKey(): Buffer {
