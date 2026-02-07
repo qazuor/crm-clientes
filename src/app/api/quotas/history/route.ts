@@ -1,3 +1,4 @@
+import { NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { getAllQuotasHistory, checkQuotaAlerts, setAlertThreshold } from '@/lib/quota-manager';
 import { logger } from '@/lib/logger';
@@ -11,7 +12,7 @@ import {
 import { quotaHistoryDaysSchema } from '@/lib/validations/enrichment';
 
 // GET /api/quotas/history - Get historical quota data
-export async function GET(request: Request) {
+export async function GET(request: Request): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -53,7 +54,7 @@ export async function GET(request: Request) {
 }
 
 // PUT /api/quotas/history - Update alert threshold
-export async function PUT(request: Request) {
+export async function PUT(request: Request): Promise<NextResponse> {
   try {
     const session = await auth();
 

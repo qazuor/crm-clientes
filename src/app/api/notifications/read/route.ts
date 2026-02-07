@@ -8,7 +8,7 @@ import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { NotificationService } from '@/lib/services/notification-service';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
 

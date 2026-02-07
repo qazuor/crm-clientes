@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
@@ -16,7 +16,7 @@ import {
 } from '@/lib/api-response'
 
 // GET /api/actividades - Obtener lista de actividades
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth()
     if (!session) {
@@ -93,7 +93,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/actividades - Crear nueva actividad
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth()
 

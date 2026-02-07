@@ -14,7 +14,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -135,7 +135,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const session = await auth();
 

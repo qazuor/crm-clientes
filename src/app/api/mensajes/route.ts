@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -12,7 +12,7 @@ import {
 } from '@/lib/api-response';
 
 // GET /api/mensajes - Listar mensajes con filtros
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session) return unauthorizedResponse();

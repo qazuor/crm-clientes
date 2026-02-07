@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
@@ -18,7 +18,7 @@ interface RouteParams {
 }
 
 // GET /api/plantillas/[id] - Obtener plantilla
-export async function GET(_request: NextRequest, { params }: RouteParams) {
+export async function GET(_request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session) return unauthorizedResponse();
@@ -47,7 +47,7 @@ export async function GET(_request: NextRequest, { params }: RouteParams) {
 }
 
 // PUT /api/plantillas/[id] - Editar plantilla (solo ADMIN)
-export async function PUT(request: NextRequest, { params }: RouteParams) {
+export async function PUT(request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session) return unauthorizedResponse();
@@ -102,7 +102,7 @@ export async function PUT(request: NextRequest, { params }: RouteParams) {
 }
 
 // DELETE /api/plantillas/[id] - Eliminar plantilla (solo ADMIN, soft via esActiva=false)
-export async function DELETE(_request: NextRequest, { params }: RouteParams) {
+export async function DELETE(_request: NextRequest, { params }: RouteParams): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session) return unauthorizedResponse();

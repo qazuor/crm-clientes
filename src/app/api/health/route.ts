@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { Prisma } from '@prisma/client';
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   let databaseStatus: 'connected' | 'error' = 'error';
 
   try {

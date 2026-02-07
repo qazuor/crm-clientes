@@ -1,4 +1,4 @@
-import { NextRequest } from 'next/server';
+import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { SendBulkMensajeSchema } from '@/lib/validations/mensaje';
@@ -12,7 +12,7 @@ import {
 } from '@/lib/api-response';
 
 // POST /api/mensajes/send-bulk - Envio masivo
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
     if (!session) return unauthorizedResponse();
