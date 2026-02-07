@@ -3,6 +3,7 @@ import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { isAdmin } from '@/lib/rbac';
 import { SettingsService } from '@/lib/services/settings-service';
+import { logAudit } from '@/lib/audit';
 import { enrichmentSettingsSchema } from '@/lib/validations/enrichment-settings';
 import type { EnrichmentSettings } from '@/types/enrichment';
 import type { ApiResponse } from '@/types';
@@ -65,6 +66,14 @@ export async function PUT(
 
     const settings = await SettingsService.updateEnrichmentSettings(validation.data);
 
+    await logAudit(
+      'UPDATE_ENRICHMENT_SETTINGS',
+      session.user.id,
+      'enrichment_settings',
+      undefined,
+      JSON.stringify(validation.data)
+    );
+
     return NextResponse.json({
       success: true,
       data: settings,
@@ -92,6 +101,12 @@ export async function POST(): Promise<NextResponse<ApiResponse<EnrichmentSetting
     }
 
     const settings = await SettingsService.resetEnrichmentSettings();
+
+    await logAudit(
+      'RESET_ENRICHMENT_SETTINGS',
+      session.user.id,
+      'enrichment_settings'
+    );
 
     return NextResponse.json({
       success: true,
