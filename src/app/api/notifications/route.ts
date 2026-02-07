@@ -6,10 +6,11 @@
 
 import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
+import { PAGINATION } from '@/lib/constants';
 import { logger } from '@/lib/logger';
 import { NotificationService } from '@/lib/services/notification-service';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -19,7 +20,7 @@ export async function GET(request: NextRequest) {
 
     const { searchParams } = new URL(request.url);
     const unreadOnly = searchParams.get('unreadOnly') === 'true';
-    const limit = parseInt(searchParams.get('limit') || '50', 10);
+    const limit = parseInt(searchParams.get('limit') || String(PAGINATION.NOTIFICATIONS_LIMIT), 10);
 
     const [notifications, unreadCount] = await Promise.all([
       NotificationService.getForUser(session.user.id, { unreadOnly, limit }),

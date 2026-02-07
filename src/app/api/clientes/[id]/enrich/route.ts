@@ -25,7 +25,7 @@ interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
-export async function POST(request: NextRequest, context: RouteContext) {
+export async function POST(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   const startTime = Date.now();
 
   try {
@@ -61,7 +61,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
           clienteId: id,
           status: 'PENDING',
           // Consider enrichments started within the last 10 minutes as in-progress
-          enrichedAt: { gte: new Date(Date.now() - 10 * 60 * 1000) },
+          enrichedAt: { gte: new Date(Date.now() - ENRICHMENT.IN_PROGRESS_WINDOW_MS) },
         },
         orderBy: { enrichedAt: 'desc' },
         select: { id: true, enrichedAt: true },
@@ -396,7 +396,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function GET(request: NextRequest, context: RouteContext) {
+export async function GET(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -538,7 +538,7 @@ export async function GET(request: NextRequest, context: RouteContext) {
   }
 }
 
-export async function PATCH(request: NextRequest, context: RouteContext) {
+export async function PATCH(request: NextRequest, context: RouteContext): Promise<NextResponse> {
   try {
     const session = await auth();
 

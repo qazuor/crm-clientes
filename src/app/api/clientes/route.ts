@@ -1,8 +1,9 @@
-import { NextRequest } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { registrarClienteCreado } from '@/lib/actividades-automaticas'
 import { logger } from '@/lib/logger'
+import { PAGINATION } from '@/lib/constants'
 import { Prisma, EstadoCliente, PrioridadCliente, FuenteCliente } from '@prisma/client'
 import {
   ClienteFiltersSchema,
@@ -17,7 +18,7 @@ import {
 } from '@/lib/api-response'
 
 // GET /api/clientes - Obtener lista de clientes
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth()
     if (!session) {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
       prioridad: searchParams.get('prioridad') || undefined,
       fuente: searchParams.get('fuente') || undefined,
       industria: searchParams.get('industria') || undefined,
-      limit: searchParams.get('limit') || '10',
+      limit: searchParams.get('limit') || String(PAGINATION.DEFAULT_LIMIT),
       offset: searchParams.get('offset') || '0',
       sortBy: searchParams.get('sortBy') || 'fechaCreacion',
       sortOrder: searchParams.get('sortOrder') || 'desc',
@@ -70,7 +71,7 @@ export async function GET(request: NextRequest) {
       include: {
         actividades: {
           where: { deletedAt: null },
-          take: 3,
+          take: PAGINATION.CLIENT_NESTED_ACTIVITIES,
           orderBy: { fecha: 'desc' },
           select: {
             id: true,
@@ -106,7 +107,7 @@ export async function GET(request: NextRequest) {
 }
 
 // POST /api/clientes - Crear nuevo cliente
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth()
 

@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
+import { PAGINATION } from '@/lib/constants'
 import {
   successResponse,
   unauthorizedResponse,
@@ -100,7 +101,7 @@ export async function GET(): Promise<NextResponse> {
       // Recent activities
       prisma.actividad.findMany({
         where: { deletedAt: null },
-        take: 5,
+        take: PAGINATION.DASHBOARD_RECENT_ACTIVITIES,
         orderBy: { fecha: 'desc' },
         include: {
           cliente: {

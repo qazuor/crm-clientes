@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { CLEANUP } from '@/lib/constants';
 
-export async function GET(request: NextRequest) {
+export async function GET(request: NextRequest): Promise<NextResponse> {
   // Verify request comes from Vercel Cron
   const authHeader = request.headers.get('authorization');
   const cronSecret = process.env.CRON_SECRET;
@@ -23,7 +24,7 @@ export async function GET(request: NextRequest) {
     summary.expiredSessionsDeleted = expiredSessions.count;
 
     // 2. Clean up old notifications (older than 30 days)
-    const thirtyDaysAgo = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
+    const thirtyDaysAgo = new Date(now.getTime() - CLEANUP.NOTIFICATION_RETENTION_DAYS * 24 * 60 * 60 * 1000);
     const oldNotifications = await prisma.notification.deleteMany({
       where: {
         createdAt: { lt: thirtyDaysAgo },

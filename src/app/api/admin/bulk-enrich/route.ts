@@ -13,7 +13,7 @@ import { AISdkService } from '@/lib/services/ai-sdk-service';
 import { BULK } from '@/lib/constants';
 import type { AIProvider } from '@/types/enrichment';
 
-export async function POST(request: NextRequest) {
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -76,7 +76,7 @@ export async function POST(request: NextRequest) {
   }
 }
 
-export async function PATCH(request: NextRequest) {
+export async function PATCH(request: NextRequest): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -131,7 +131,7 @@ export async function PATCH(request: NextRequest) {
   }
 }
 
-export async function GET() {
+export async function GET(): Promise<NextResponse> {
   try {
     const session = await auth();
 
@@ -146,7 +146,7 @@ export async function GET() {
     // Get stats, pending clients, pending confirmation, and available AI providers
     const [stats, pendingClients, pendingConfirmation, availableAIProviders] = await Promise.all([
       BulkEnrichmentService.getEnrichmentStats(),
-      BulkEnrichmentService.getClientsNeedingEnrichment(50),
+      BulkEnrichmentService.getClientsNeedingEnrichment(BULK.MAX_ENRICHMENT),
       BulkEnrichmentService.getClientesPendingConfirmation(),
       AISdkService.getAvailableProviders(),
     ]);
