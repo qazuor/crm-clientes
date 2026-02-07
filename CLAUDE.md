@@ -1,127 +1,107 @@
-# CLAUDE.md
-
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+# CRM Clientes
 
 ## Project Overview
 
-CRM Clientes is a full-stack Customer Relationship Management system built with Next.js 16 (App Router), TypeScript, Prisma ORM, and TailwindCSS 4. The application manages client data, tracks activities, and includes a unique client enrichment feature that captures website screenshots and PageSpeed metrics.
+Client Relationship Management (CRM) application for managing clients, activities, messages, and AI-powered data enrichment. Built with Next.js App Router, Prisma ORM, and PostgreSQL.
 
-## Development Commands
+## Technology Stack
 
-```bash
-# Start dev server (port 4500)
-npm run dev
-
-# Build for production
-npm run build
-
-# Linting
-npm run lint
-
-# Database operations
-npm run db:seed          # Seed database with initial data
-npm run db:studio        # Open Prisma Studio GUI
-npm run db:reset         # Reset and reseed database
-
-# Prisma commands
-npx prisma migrate dev   # Create and apply migrations
-npx prisma generate      # Regenerate Prisma client after schema changes
-```
+- **Runtime**: Node.js with TypeScript (strict mode)
+- **Framework**: Next.js 16 (App Router)
+- **Database**: PostgreSQL with Prisma ORM 5.22
+- **Authentication**: better-auth
+- **UI**: Tailwind CSS 4, Radix UI, Headless UI, Lucide/Heroicons/Phosphor icons
+- **State Management**: TanStack React Query, TanStack React Table, TanStack React Form
+- **Rich Text**: Tiptap editor
+- **Validation**: Zod
+- **Email**: Resend
+- **Storage**: Vercel Blob
+- **Rate Limiting**: Upstash Redis
+- **AI**: OpenAI SDK
+- **Package Manager**: pnpm
 
 ## Architecture
 
-### Tech Stack
-- **Framework**: Next.js 16 with App Router, React 19
-- **Language**: TypeScript (strict mode)
-- **Database**: PostgreSQL (dev via Docker on port 5437, prod via Vercel)
-- **ORM**: Prisma 5.22
-- **Auth**: Better Auth with credentials (email/password), session-based (cookies + DB)
-- **Styling**: TailwindCSS 4 with Headless UI and Radix primitives
-- **Data Fetching**: TanStack React Query + React Table
-
 ### Directory Structure
+
 ```
 src/
-├── app/                    # Next.js App Router
-│   ├── (auth)/            # Auth routes (login, error)
-│   ├── api/               # API route handlers
-│   │   ├── clientes/      # Client CRUD endpoints
-│   │   ├── actividades/   # Activity logging
-│   │   ├── enrichment/    # Client enrichment (screenshots, PageSpeed)
-│   │   └── auth/          # Better Auth routes
-│   ├── clientes/          # Client management pages
-│   │   └── [id]/          # Dynamic client routes (detail, edit, activities)
-│   └── admin/             # Admin section
-├── components/            # React components
-│   ├── ui/               # Base UI (Button, Toggle)
-│   └── enrichment/       # Enrichment-specific components
-├── lib/                   # Core utilities
-│   ├── auth.ts           # Better Auth server instance + auth() wrapper
-│   ├── auth-client.ts    # Better Auth client (for React components)
-│   ├── prisma.ts         # Prisma singleton
-│   ├── screenshot-service.ts   # Website screenshot capture
-│   ├── pagespeed-service.ts    # PageSpeed analysis
-│   └── quota-manager.ts        # API quota tracking
-├── hooks/                 # Custom React hooks
-└── types/                 # TypeScript definitions (types/index.ts)
+  app/                  # Next.js App Router pages and API routes
+    api/                # REST API endpoints
+      clientes/         # Client CRUD + enrichment
+      actividades/      # Activity tracking
+      mensajes/         # Messaging
+      admin/            # Admin endpoints (API keys, bulk enrich)
+      auth/             # Authentication routes (better-auth)
+      stats/            # Dashboard statistics
+      quotas/           # Usage quotas
+    clientes/           # Client pages (list, detail)
+    actividades/        # Activity pages
+    admin/              # Admin pages
+    auth/               # Auth pages
+  components/           # React components
+    enrichment/         # AI enrichment UI (modal, review, history, summary)
+      shared/           # Shared enrichment subcomponents
+    forms/              # Form components
+    layout/             # Layout components
+    ui/                 # Base UI components
+    admin/              # Admin panel components
+    tables/             # Table components
+  hooks/                # Custom React hooks
+  lib/                  # Core utilities and services
+    services/           # Business logic services
+    validations/        # Zod validation schemas
+  stores/               # Client state stores
+  types/                # TypeScript type definitions
+  utils/                # Utility functions
 ```
-
-### Data Models (Prisma Schema)
-- **User**: Authentication with roles (ADMIN, MANAGER, AGENT)
-- **Cliente**: Core entity with contact info, social profiles, enrichment data (JSON fields for websiteMetrics, techStack, socialProfiles)
-- **Actividad**: Activity tracking linked to clients and users
-- **Account/Session/Verification**: Better Auth tables for auth
 
 ### Key Patterns
-- Server Components by default, `'use client'` for interactive UI
-- Prisma singleton pattern in `lib/prisma.ts`
-- Service classes for external APIs (ScreenshotService, PageSpeedService)
-- Quota management for rate-limited external services
-- Path alias: `@/*` maps to `./src/*`
 
-## Client Enrichment Feature
+- **API Routes**: Next.js route handlers with Zod validation and typed responses
+- **Path Alias**: `@/*` maps to `./src/*`
+- **Auth**: better-auth with RBAC (role-based access control)
+- **Data Fetching**: TanStack React Query for client-side, server components for SSR
+- **Enrichment System**: AI-powered client data enrichment with multi-provider support, review workflow, and confidence scoring
+- **Error Handling**: Typed API responses with circuit breaker and retry patterns
 
-Unique feature that enriches client data by:
-1. Capturing desktop/mobile screenshots via shot.screenshotapi.net
-2. Running PageSpeed analysis
-3. Storing results in Cliente JSON fields
+## Development
 
-Quota limits: ~33 screenshots/day (1000/month free tier). Screenshots stored in `/public/screenshots/`.
+### Commands
 
-## Environment Variables
-
-Required in `.env`:
-```
-DATABASE_URL="postgresql://user:password@localhost:5437/crm_clientes"
-DIRECT_URL="postgresql://user:password@localhost:5437/crm_clientes"
-BETTER_AUTH_SECRET="your-secret-at-least-32-chars"
-BETTER_AUTH_URL="http://localhost:4500"
-OPENAI_API_KEY="sk-..."  # For AI features
+```bash
+pnpm dev              # Start dev server (port 4500)
+pnpm build            # Build for production
+pnpm lint             # Run ESLint
+pnpm db:migrate       # Run Prisma migrations
+pnpm db:push          # Push schema changes
+pnpm db:studio        # Open Prisma Studio
+pnpm db:seed          # Seed database
+pnpm docker:up        # Start Docker services
+pnpm docker:down      # Stop Docker services
 ```
 
-## Type Definitions
+### Database
 
-All core types are in `src/types/index.ts`:
-- Domain types: `UserRole`, `EstadoCliente`, `PrioridadCliente`, `FuenteCliente`, `TipoActividad`
-- Interfaces: `User`, `Cliente`, `Actividad`
-- DTOs: `CreateClienteDTO`, `UpdateClienteDTO`, `CreateActividadDTO`
-- API types: `ApiResponse<T>`, `PaginatedResponse<T>`, `ClienteFilters`
+- PostgreSQL via Docker (see `docker/docker-compose.yml`)
+- Prisma schema at `prisma/schema.prisma`
+- Seed scripts at `prisma/seed.ts`, `prisma/seed-restore.ts`, `prisma/seed-plantillas.ts`
 
-## API Routes
+## Coding Standards
 
-- `GET/POST /api/clientes` - List/create clients with filtering and pagination
-- `GET/PUT/DELETE /api/clientes/[id]` - Single client operations
-- `GET/POST /api/actividades` - Activity management
-- `POST /api/enrichment` - Trigger client enrichment
-- `GET /api/stats` - CRM statistics
-- `GET /api/quotas` - API quota status
+- TypeScript strict mode, no `any` types
+- Named exports only (no default exports)
+- RO-RO pattern (Receive Object, Return Object) for functions
+- Maximum 500 lines per file
+- JSDoc on all exported functions, classes, and types
+- Zod for runtime validation of all inputs
+- async/await instead of .then() chains
+- Prefer immutability (readonly, as const)
+- Use `import type` for type-only imports
+- English only for code, comments, and variable names
 
-## Authentication
+## Git
 
-- **Library**: Better Auth with Prisma adapter
-- Login page: `/auth/login`
-- Default dev users seeded with password "123456"
-- Session-based auth (cookies + DB), 30-day expiry
-- Protected routes via middleware (`src/middleware.ts`)
-- Server-side session: `import { auth } from '@/lib/auth'` then `const session = await auth()`
-- Client-side auth: `import { authClient } from '@/lib/auth-client'`
+- Conventional Commits: `type(scope): description`
+- Stage files individually (never `git add .` or `git add -A`)
+- Keep commits atomic and focused
