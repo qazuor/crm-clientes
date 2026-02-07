@@ -214,8 +214,7 @@ export async function auth() {
   });
   if (!session) return null;
 
-  const userRecord = session.user as Record<string, unknown>;
-  const rawRole = userRecord.role;
+  const rawRole = 'role' in session.user ? session.user.role : undefined;
   const role: UserRole = isValidRole(rawRole) ? rawRole : 'AGENT';
 
   return {
