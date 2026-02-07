@@ -55,11 +55,12 @@ async function main() {
   console.log(`   👥 ${users} usuarios`);
   console.log(`   📋 ${clientes} clientes`);
   console.log(`   📧 ${plantillas} plantillas`);
+  const displayPassword = process.env.SEED_PASSWORD ? '(from SEED_PASSWORD env)' : '123456';
   console.log('\n🔑 Credenciales de acceso:');
-  console.log('   👤 Admin: admin@crm.com / 123456');
-  console.log('   👤 Manager: manager@crm.com / 123456');
-  console.log('   👤 Agente 1: agent1@crm.com / 123456');
-  console.log('   👤 Agente 2: agent2@crm.com / 123456');
+  console.log(`   👤 Admin: admin@crm.com / ${displayPassword}`);
+  console.log(`   👤 Manager: manager@crm.com / ${displayPassword}`);
+  console.log(`   👤 Agente 1: agent1@crm.com / ${displayPassword}`);
+  console.log(`   👤 Agente 2: agent2@crm.com / ${displayPassword}`);
 }
 
 main()

@@ -84,7 +84,15 @@ async function loadJsonData() {
  */
 export async function seedUsers(prisma: PrismaClient) {
   console.log('👥 Creando usuarios del sistema...');
-  const hashedPassword = await bcrypt.hash('123456', 12);
+
+  const seedPassword = process.env.SEED_PASSWORD;
+  if (!seedPassword && process.env.NODE_ENV === 'production') {
+    throw new Error(
+      'SEED_PASSWORD env var is required in production. Set a strong password before running the seed.'
+    );
+  }
+  const password = seedPassword || '123456';
+  const hashedPassword = await bcrypt.hash(password, 12);
 
   const users = [
     { email: 'admin@crm.com', name: 'Administrador', role: 'ADMIN' as const },
@@ -210,11 +218,12 @@ if (require.main === module) {
     await seedUsers(prisma);
     await seedClientes(prisma);
 
+    const displayPassword = process.env.SEED_PASSWORD ? '(from SEED_PASSWORD env)' : '123456';
     console.log('\n🔑 Credenciales de acceso:');
-    console.log('   👤 Admin: admin@crm.com / 123456');
-    console.log('   👤 Manager: manager@crm.com / 123456');
-    console.log('   👤 Agente 1: agent1@crm.com / 123456');
-    console.log('   👤 Agente 2: agent2@crm.com / 123456');
+    console.log(`   👤 Admin: admin@crm.com / ${displayPassword}`);
+    console.log(`   👤 Manager: manager@crm.com / ${displayPassword}`);
+    console.log(`   👤 Agente 1: agent1@crm.com / ${displayPassword}`);
+    console.log(`   👤 Agente 2: agent2@crm.com / ${displayPassword}`);
   })()
     .catch((e) => {
       console.error('❌ Error en el seed:', e);
