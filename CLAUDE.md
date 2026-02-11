@@ -42,18 +42,15 @@ src/
   components/           # React components
     enrichment/         # AI enrichment UI (modal, review, history, summary)
       shared/           # Shared enrichment subcomponents
-    forms/              # Form components
-    layout/             # Layout components
+    shared/             # Shared components (icons, utilities)
     ui/                 # Base UI components
     admin/              # Admin panel components
-    tables/             # Table components
   hooks/                # Custom React hooks
   lib/                  # Core utilities and services
     services/           # Business logic services
     validations/        # Zod validation schemas
-  stores/               # Client state stores
+  test/                 # Test setup, utilities, and mocks
   types/                # TypeScript type definitions
-  utils/                # Utility functions
 ```
 
 ### Key Patterns
@@ -79,6 +76,9 @@ pnpm db:studio        # Open Prisma Studio
 pnpm db:seed          # Seed database
 pnpm docker:up        # Start Docker services
 pnpm docker:down      # Stop Docker services
+pnpm test             # Run tests
+pnpm test:watch       # Run tests in watch mode
+pnpm test:coverage    # Run tests with coverage report
 ```
 
 ### Database
@@ -90,7 +90,7 @@ pnpm docker:down      # Stop Docker services
 ## Coding Standards
 
 - TypeScript strict mode, no `any` types
-- Named exports only (no default exports)
+- Named exports only (no default exports). Exception: Next.js App Router files (page.tsx, layout.tsx, loading.tsx, error.tsx, not-found.tsx) require default exports by framework convention
 - RO-RO pattern (Receive Object, Return Object) for functions
 - Maximum 500 lines per file
 - JSDoc on all exported functions, classes, and types
