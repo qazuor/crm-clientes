@@ -23,32 +23,11 @@ function getProviderCircuitBreaker(provider: AIProvider): CircuitBreaker {
   return providerCircuitBreakers[provider];
 }
 
-export interface AIMessage {
-  role: 'system' | 'user' | 'assistant';
-  content: string;
-}
+import type { AIMessage, AICompletionOptions, AICompletionResult } from './ai-sdk-types';
+export type { AIMessage, AICompletionOptions, AICompletionResult };
 
 /** Default timeout for AI provider calls (30 seconds) */
 const DEFAULT_AI_TIMEOUT_MS = 30_000;
-
-export interface AICompletionOptions {
-  temperature?: number;
-  topP?: number;
-  maxTokens?: number;
-  /** Timeout in milliseconds for the AI provider call. Default: 30000 (30s) */
-  timeoutMs?: number;
-}
-
-export interface AICompletionResult {
-  content: string;
-  provider: AIProvider;
-  model: string;
-  usage?: {
-    promptTokens: number;
-    completionTokens: number;
-    totalTokens: number;
-  };
-}
 
 // Provider-specific API configurations
 const PROVIDER_CONFIGS: Record<AIProvider, { baseUrl: string; authHeader: string }> = {

@@ -8,9 +8,15 @@ import { ConsensusService } from './consensus-service';
 import { WebsiteAnalysisService } from './website-analysis-service';
 import { logger } from '@/lib/logger';
 import { pMap } from '@/lib/concurrency';
+import { withTimeout } from '@/lib/timeout';
+import { TIMEOUTS } from '@/lib/constants';
+import {
+  buildFieldStatuses as buildFieldStatusesFn,
+  getFieldUpdateData as getFieldUpdateDataFn,
+} from './enrichment-field-utils';
+import { confirmFieldsBatch, rejectFieldsBatch } from './enrichment-batch-review';
 import type { ClientContext } from './enrichment-prompts';
 import type { AIProvider, FieldReviewStatus, ReviewableField } from '@/types/enrichment';
-import { REVIEWABLE_FIELDS } from '@/types/enrichment';
 
 export interface BulkEnrichmentOptions {
   clienteIds: string[];
@@ -56,176 +62,17 @@ type ProgressCallback = (progress: BulkEnrichmentProgress) => void;
  * Bulk Enrichment Service
  */
 export class BulkEnrichmentService {
-  /**
-   * Build fieldStatuses JSON from enrichment data.
-   * Only includes fields that have non-null values, all set to PENDING.
-   * Social profiles are split into individual network fields.
-   */
+  /** Build fieldStatuses JSON from enrichment data. Delegates to enrichment-field-utils. */
   static buildFieldStatuses(enrichmentData: Record<string, unknown>): Record<string, FieldReviewStatus> {
-    const statuses: Record<string, FieldReviewStatus> = {};
-
-    // Basic fields mapping (excludes socialProfiles - handled separately)
-    const basicFieldMapping: Record<string, string | string[]> = {
-      website: 'website',
-      industry: 'industry',
-      description: 'description',
-      companySize: 'companySize',
-      address: 'address',
-      emails: 'emails',
-      phones: 'phones',
-    };
-
-    for (const [field, keys] of Object.entries(basicFieldMapping)) {
-      const keyList = Array.isArray(keys) ? keys : [keys];
-      const hasData = keyList.some((k) => {
-        const val = enrichmentData[k];
-        if (val == null) return false;
-        if (typeof val === 'string') {
-          // Check if it's a JSON array/object string
-          try {
-            const parsed = JSON.parse(val);
-            if (Array.isArray(parsed)) return parsed.length > 0;
-            if (typeof parsed === 'object') return Object.keys(parsed).length > 0;
-          } catch {
-            // Not JSON, treat as regular string
-          }
-          return val.length > 0;
-        }
-        return true;
-      });
-
-      if (hasData) {
-        statuses[field] = 'PENDING';
-      }
-    }
-
-    // Handle socialProfiles - create individual entries for each network found
-    const socialProfilesRaw = enrichmentData.socialProfiles;
-    if (socialProfilesRaw) {
-      let profiles: Record<string, string> | null = null;
-
-      if (typeof socialProfilesRaw === 'string') {
-        try {
-          profiles = JSON.parse(socialProfilesRaw);
-        } catch {
-          profiles = null;
-        }
-      } else if (typeof socialProfilesRaw === 'object' && socialProfilesRaw !== null) {
-        profiles = socialProfilesRaw as Record<string, string>;
-      }
-
-      if (profiles) {
-        // Create individual status for each social network that has a value
-        const networkFieldMap: Record<string, string> = {
-          facebook: 'social_facebook',
-          instagram: 'social_instagram',
-          linkedin: 'social_linkedin',
-          twitter: 'social_twitter',
-          whatsapp: 'social_whatsapp',
-          youtube: 'social_youtube',
-          tiktok: 'social_tiktok',
-        };
-
-        for (const [network, fieldName] of Object.entries(networkFieldMap)) {
-          if (profiles[network] && typeof profiles[network] === 'string' && profiles[network].length > 0) {
-            statuses[fieldName] = 'PENDING';
-          }
-        }
-      }
-    }
-
-    return statuses;
+    return buildFieldStatusesFn(enrichmentData);
   }
 
-  /**
-   * Apply a single confirmed field to the client record.
-   */
+  /** Apply a single confirmed field to the client record. Delegates to enrichment-field-utils. */
   static getFieldUpdateData(
     field: ReviewableField,
-    enrichment: Record<string, unknown>
+    enrichment: Record<string, unknown>,
   ): Record<string, unknown> {
-    const updateData: Record<string, unknown> = {};
-
-    switch (field) {
-      case 'website':
-        if (enrichment.website) updateData.sitioWeb = enrichment.website;
-        break;
-      case 'industry':
-        if (enrichment.industry) updateData.industria = enrichment.industry;
-        break;
-      case 'description':
-        if (enrichment.description) updateData.notas = enrichment.description;
-        break;
-      case 'address':
-        if (enrichment.address) updateData.direccion = enrichment.address;
-        break;
-      case 'socialProfiles':
-        if (enrichment.socialProfiles) {
-          const profiles =
-            typeof enrichment.socialProfiles === 'string'
-              ? JSON.parse(enrichment.socialProfiles)
-              : enrichment.socialProfiles;
-          if (profiles.facebook) updateData.facebook = profiles.facebook;
-          if (profiles.instagram) updateData.instagram = profiles.instagram;
-          if (profiles.linkedin) updateData.linkedin = profiles.linkedin;
-          if (profiles.twitter) updateData.twitter = profiles.twitter;
-          if (profiles.whatsapp) updateData.whatsapp = profiles.whatsapp;
-        }
-        break;
-      case 'emails':
-        if (enrichment.emails) {
-          const emailsArray =
-            typeof enrichment.emails === 'string'
-              ? JSON.parse(enrichment.emails)
-              : enrichment.emails;
-          if (Array.isArray(emailsArray) && emailsArray.length > 0) {
-            const firstEmail = emailsArray[0];
-            const emailValue = firstEmail.value ?? firstEmail.email ?? firstEmail;
-            if (typeof emailValue === 'string') updateData.email = emailValue;
-          }
-        }
-        break;
-      case 'phones':
-        if (enrichment.phones) {
-          const phonesArray =
-            typeof enrichment.phones === 'string'
-              ? JSON.parse(enrichment.phones)
-              : enrichment.phones;
-          if (Array.isArray(phonesArray) && phonesArray.length > 0) {
-            const firstPhone = phonesArray[0];
-            const phoneValue = firstPhone.value ?? firstPhone.number ?? firstPhone;
-            if (typeof phoneValue === 'string') updateData.telefono = phoneValue;
-          }
-        }
-        break;
-      // companySize: no direct client mapping (no field in Cliente model)
-      // Individual social network fields
-      case 'social_facebook':
-      case 'social_instagram':
-      case 'social_linkedin':
-      case 'social_twitter':
-      case 'social_whatsapp':
-      case 'social_youtube':
-      case 'social_tiktok': {
-        // Extract network name from field (e.g., 'social_facebook' -> 'facebook')
-        const network = field.replace('social_', '');
-        const profiles = enrichment.socialProfiles
-          ? typeof enrichment.socialProfiles === 'string'
-            ? JSON.parse(enrichment.socialProfiles)
-            : enrichment.socialProfiles
-          : null;
-        if (profiles && profiles[network]) {
-          // Map to client field name (facebook, instagram, linkedin, twitter, whatsapp)
-          // Note: youtube and tiktok don't have dedicated fields in Cliente model
-          if (['facebook', 'instagram', 'linkedin', 'twitter', 'whatsapp'].includes(network)) {
-            updateData[network] = profiles[network];
-          }
-        }
-        break;
-      }
-    }
-
-    return updateData;
+    return getFieldUpdateDataFn(field, enrichment);
   }
 
   /**
@@ -318,7 +165,11 @@ export class BulkEnrichmentService {
           };
 
           try {
-            const enrichResult = await ConsensusService.quickEnrich(clientContext, provider);
+            const enrichResult = await withTimeout({
+              promise: ConsensusService.quickEnrich(clientContext, provider),
+              timeoutMs: TIMEOUTS.AI_OPERATION_MS,
+              operation: `bulkEnrich:${cliente.nombre}`,
+            });
 
             // Save enrichment data
             if (enrichResult.website?.value || enrichResult.description?.value) {
@@ -608,207 +459,19 @@ export class BulkEnrichmentService {
     }));
   }
 
-  /**
-   * Confirm specific fields for a batch of clients — apply data to clients
-   */
+  /** Confirm specific fields for a batch of clients. Delegates to enrichment-batch-review. */
   static async confirmFields(
     items: Array<{ clienteId: string; fields: string[] }>,
-    userId: string
+    userId: string,
   ): Promise<{ confirmed: number; errors: string[] }> {
-    let confirmed = 0;
-    const errors: string[] = [];
-
-    for (const { clienteId, fields } of items) {
-      try {
-        // Find the latest PENDING enrichment for this client
-        const enrichment = await prisma.clienteEnrichment.findFirst({
-          where: { clienteId, status: 'PENDING' },
-          orderBy: { enrichedAt: 'desc' },
-        });
-
-        if (!enrichment || enrichment.status !== 'PENDING') {
-          errors.push(`${clienteId}: no tiene enriquecimiento pendiente`);
-          continue;
-        }
-
-        const fieldStatuses: Record<string, FieldReviewStatus> = enrichment.fieldStatuses
-          ? JSON.parse(enrichment.fieldStatuses)
-          : BulkEnrichmentService.buildFieldStatuses(enrichment as unknown as Record<string, unknown>);
-
-        // Validate fields
-        const validFields = fields.filter(
-          (f) => REVIEWABLE_FIELDS.includes(f as ReviewableField) && fieldStatuses[f] === 'PENDING'
-        );
-
-        if (validFields.length === 0) {
-          errors.push(`${clienteId}: no hay campos validos pendientes para confirmar`);
-          continue;
-        }
-
-        // Mark fields as CONFIRMED
-        for (const field of validFields) {
-          fieldStatuses[field] = 'CONFIRMED';
-        }
-
-        // Apply confirmed fields to the client
-        const allUpdateData: Record<string, unknown> = {};
-        for (const field of validFields) {
-          const fieldUpdate = BulkEnrichmentService.getFieldUpdateData(
-            field as ReviewableField,
-            enrichment as unknown as Record<string, unknown>
-          );
-          Object.assign(allUpdateData, fieldUpdate);
-        }
-
-        if (Object.keys(allUpdateData).length > 0) {
-          await prisma.cliente.update({
-            where: { id: clienteId },
-            data: allUpdateData,
-          });
-        }
-
-        // Check if all fields are reviewed (none PENDING)
-        const allReviewed = Object.values(fieldStatuses).every((s) => s !== 'PENDING');
-
-        await prisma.clienteEnrichment.update({
-          where: { id: enrichment.id },
-          data: {
-            fieldStatuses: JSON.stringify(fieldStatuses),
-            ...(allReviewed
-              ? { status: 'CONFIRMED', reviewedAt: new Date(), reviewedBy: userId }
-              : {}),
-          },
-        });
-
-        // Update enrichmentStatus on Cliente
-        if (allReviewed) {
-          await prisma.cliente.update({
-            where: { id: clienteId },
-            data: { enrichmentStatus: 'COMPLETE' },
-          });
-        } else {
-          await prisma.cliente.update({
-            where: { id: clienteId },
-            data: { enrichmentStatus: 'PARTIAL' },
-          });
-        }
-
-        // Log activity
-        try {
-          await prisma.actividad.create({
-            data: {
-              tipo: 'IA_ENRIQUECIMIENTO',
-              descripcion: `Campos IA confirmados: ${validFields.join(', ')}`,
-              clienteId,
-              usuarioId: userId,
-            },
-          });
-        } catch (activityError) {
-          logger.warn('Failed to log confirm activity', {
-            clienteId,
-            error: activityError instanceof Error ? activityError.message : String(activityError),
-          });
-        }
-
-        confirmed += validFields.length;
-      } catch (error) {
-        errors.push(
-          `${clienteId}: ${error instanceof Error ? error.message : 'Error desconocido'}`
-        );
-      }
-    }
-
-    return { confirmed, errors };
+    return confirmFieldsBatch(items, userId);
   }
 
-  /**
-   * Reject specific fields for a batch of clients
-   */
+  /** Reject specific fields for a batch of clients. Delegates to enrichment-batch-review. */
   static async rejectFields(
     items: Array<{ clienteId: string; fields: string[] }>,
-    userId: string
+    userId: string,
   ): Promise<{ rejected: number; errors: string[] }> {
-    let rejected = 0;
-    const errors: string[] = [];
-
-    for (const { clienteId, fields } of items) {
-      try {
-        // Find the latest PENDING enrichment for this client
-        const enrichment = await prisma.clienteEnrichment.findFirst({
-          where: { clienteId, status: 'PENDING' },
-          orderBy: { enrichedAt: 'desc' },
-        });
-
-        if (!enrichment) {
-          errors.push(`${clienteId}: no tiene enriquecimiento pendiente`);
-          continue;
-        }
-
-        const fieldStatuses: Record<string, FieldReviewStatus> = enrichment.fieldStatuses
-          ? JSON.parse(enrichment.fieldStatuses)
-          : BulkEnrichmentService.buildFieldStatuses(enrichment as unknown as Record<string, unknown>);
-
-        // Validate fields
-        const validFields = fields.filter(
-          (f) => REVIEWABLE_FIELDS.includes(f as ReviewableField) && fieldStatuses[f] === 'PENDING'
-        );
-
-        if (validFields.length === 0) {
-          errors.push(`${clienteId}: no hay campos validos pendientes para rechazar`);
-          continue;
-        }
-
-        // Mark fields as REJECTED
-        for (const field of validFields) {
-          fieldStatuses[field] = 'REJECTED';
-        }
-
-        // Check if all fields are reviewed (none PENDING)
-        const allReviewed = Object.values(fieldStatuses).every((s) => s !== 'PENDING');
-
-        await prisma.clienteEnrichment.update({
-          where: { id: enrichment.id },
-          data: {
-            fieldStatuses: JSON.stringify(fieldStatuses),
-            ...(allReviewed
-              ? { status: 'CONFIRMED', reviewedAt: new Date(), reviewedBy: userId }
-              : {}),
-          },
-        });
-
-        // Update enrichmentStatus on Cliente
-        if (allReviewed) {
-          await prisma.cliente.update({
-            where: { id: clienteId },
-            data: { enrichmentStatus: 'COMPLETE' },
-          });
-        }
-
-        // Log activity
-        try {
-          await prisma.actividad.create({
-            data: {
-              tipo: 'IA_ENRIQUECIMIENTO',
-              descripcion: `Campos IA rechazados: ${validFields.join(', ')}`,
-              clienteId,
-              usuarioId: userId,
-            },
-          });
-        } catch (activityError) {
-          logger.warn('Failed to log reject activity', {
-            clienteId,
-            error: activityError instanceof Error ? activityError.message : String(activityError),
-          });
-        }
-
-        rejected += validFields.length;
-      } catch (error) {
-        errors.push(
-          `${clienteId}: ${error instanceof Error ? error.message : 'Error desconocido'}`
-        );
-      }
-    }
-
-    return { rejected, errors };
+    return rejectFieldsBatch(items, userId);
   }
 }

@@ -3,37 +3,19 @@
  * Combines results from multiple AI providers to get the most accurate data
  */
 
-import { AISdkService, type AIMessage, type AICompletionOptions } from './ai-sdk-service';
+import { AISdkService } from './ai-sdk-service';
+import type { AIMessage, AICompletionOptions } from './ai-sdk-service';
 import { SettingsService } from './settings-service';
 import { logger } from '@/lib/logger';
 import {
   getEnrichmentSystemPrompt,
   getEnrichmentPrompt,
   getConsensusPrompt,
-  type ClientContext,
 } from './enrichment-prompts';
+import type { ClientContext } from './enrichment-prompts';
 import type { AIProvider } from '@/types/enrichment';
-
-export interface EnrichmentFieldResult<T> {
-  value: T | null;
-  score: number;
-  source: string;
-  providers: AIProvider[];
-  consensus: boolean;
-}
-
-export interface EnrichmentResult {
-  website: EnrichmentFieldResult<string> | null;
-  emails: EnrichmentFieldResult<Array<{ email: string; type: string }>> | null;
-  phones: EnrichmentFieldResult<Array<{ number: string; type: string }>> | null;
-  address: EnrichmentFieldResult<string> | null;
-  description: EnrichmentFieldResult<string> | null;
-  industry: EnrichmentFieldResult<string> | null;
-  companySize: EnrichmentFieldResult<string> | null;
-  socialProfiles: EnrichmentFieldResult<Record<string, string>> | null;
-  providersUsed: AIProvider[];
-  errors: Array<{ provider: AIProvider; error: string }>;
-}
+import type { EnrichmentFieldResult, EnrichmentResult } from './consensus-types';
+export type { EnrichmentFieldResult, EnrichmentResult };
 
 interface ProviderResult {
   provider: AIProvider;

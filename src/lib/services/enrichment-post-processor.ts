@@ -4,14 +4,14 @@
  * Called after ConsensusService to verify and augment results
  */
 
-import { HunterService } from './external-apis/hunter-service';
-import { SerpAPIService } from './external-apis/serpapi-service';
 import { GooglePlacesService } from './external-apis/google-places-service';
 import { GoogleSafeBrowsingService } from './external-apis/google-safe-browsing-service';
-import { SocialMediaService, SocialProfile } from './social-media-service';
+import { SocialMediaService } from './social-media-service';
+import type { SocialProfile } from './social-media-service';
 import { SettingsService } from './settings-service';
 import { logger } from '@/lib/logger';
 import type { EnrichmentResult } from './consensus-service';
+import { verifyEmailsWithHunter, searchGoogleMaps, searchGooglePlaces } from './enrichment-external-helpers';
 
 export interface PostProcessorOptions {
   verifyEmails?: boolean;
@@ -54,7 +54,7 @@ export class EnrichmentPostProcessor {
     // 1. Verify emails with Hunter.io
     if (options.verifyEmails !== false && enhancedResult.emails?.value) {
       try {
-        const verifiedEmails = await this.verifyEmailsWithHunter(
+        const verifiedEmails = await verifyEmailsWithHunter(
           enhancedResult.emails.value
         );
 
@@ -81,7 +81,7 @@ export class EnrichmentPostProcessor {
     // 2. Search Google Maps for business data via SerpAPI
     if (options.searchGoogleMaps !== false && options.companyName) {
       try {
-        const mapsResult = await this.searchGoogleMaps(
+        const mapsResult = await searchGoogleMaps(
           options.companyName,
           options.location
         );
@@ -147,7 +147,7 @@ export class EnrichmentPostProcessor {
     // 3. Search Google Places for detailed business info
     if (options.searchGooglePlaces !== false && options.companyName) {
       try {
-        const placesResult = await this.searchGooglePlaces(
+        const placesResult = await searchGooglePlaces(
           options.companyName,
           options.location
         );
@@ -352,149 +352,6 @@ export class EnrichmentPostProcessor {
       socialProfiles,
       externalDataUsed,
       errors,
-    };
-  }
-
-  /**
-   * Verify emails using Hunter.io
-   */
-  private static async verifyEmailsWithHunter(
-    emails: Array<{ email: string; type: string }>
-  ): Promise<{
-    all: Array<{ email: string; type: string; verified?: boolean; status?: string }>;
-    verified: Array<{ email: string; type: string }>;
-    errors: string[];
-  }> {
-    const results: Array<{ email: string; type: string; verified?: boolean; status?: string }> = [];
-    const verified: Array<{ email: string; type: string }> = [];
-    const errors: string[] = [];
-
-    // Limit verification to first 5 emails to conserve quota
-    const emailsToVerify = emails.slice(0, 5);
-
-    for (const emailData of emailsToVerify) {
-      try {
-        const result = await HunterService.verifyEmail(emailData.email);
-
-        if (result.success) {
-          const isValid = result.status === 'valid' || result.status === 'accept_all';
-          results.push({
-            ...emailData,
-            verified: isValid,
-            status: result.status,
-          });
-
-          if (isValid) {
-            verified.push(emailData);
-          }
-        } else {
-          // Keep email but mark as unverified
-          results.push({
-            ...emailData,
-            verified: false,
-            status: 'error',
-          });
-          if (result.error) {
-            errors.push(`Email ${emailData.email}: ${result.error}`);
-          }
-        }
-      } catch {
-        results.push({
-          ...emailData,
-          verified: false,
-          status: 'error',
-        });
-      }
-    }
-
-    // Add remaining emails (not verified due to quota limits)
-    for (const emailData of emails.slice(5)) {
-      results.push({
-        ...emailData,
-        verified: undefined, // Not verified
-        status: 'not_checked',
-      });
-    }
-
-    return { all: results, verified, errors };
-  }
-
-  /**
-   * Search Google Maps for business information
-   */
-  private static async searchGoogleMaps(
-    companyName: string,
-    location?: string
-  ): Promise<{
-    success: boolean;
-    name?: string;
-    address?: string;
-    phone?: string;
-    website?: string;
-    rating?: number;
-    type?: string;
-    error?: string;
-  }> {
-    // Use location if provided, otherwise try without
-    const searchLocation = location || '';
-
-    const result = await SerpAPIService.searchLocalBusiness(companyName, searchLocation);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    return {
-      success: true,
-      name: result.name,
-      address: result.address,
-      phone: result.phone,
-      website: result.website,
-      rating: result.rating,
-      type: result.type,
-    };
-  }
-
-  /**
-   * Search Google Places for business information
-   */
-  private static async searchGooglePlaces(
-    companyName: string,
-    location?: string
-  ): Promise<{
-    success: boolean;
-    place?: {
-      formattedAddress?: string;
-      formattedPhoneNumber?: string;
-      internationalPhoneNumber?: string;
-      website?: string;
-      rating?: number;
-      userRatingsTotal?: number;
-      types?: string[];
-    };
-    error?: string;
-  }> {
-    const result = await GooglePlacesService.findBusiness(companyName, location);
-
-    if (!result.success) {
-      return { success: false, error: result.error };
-    }
-
-    if (!result.place) {
-      return { success: true, error: 'No se encontraron resultados' };
-    }
-
-    return {
-      success: true,
-      place: {
-        formattedAddress: result.place.formattedAddress,
-        formattedPhoneNumber: result.place.formattedPhoneNumber,
-        internationalPhoneNumber: result.place.internationalPhoneNumber,
-        website: result.place.website,
-        rating: result.place.rating,
-        userRatingsTotal: result.place.userRatingsTotal,
-        types: result.place.types,
-      },
     };
   }
 
