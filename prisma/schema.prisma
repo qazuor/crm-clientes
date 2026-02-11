@@ -222,6 +222,10 @@ model Actividad {
   @@index([usuarioId, fecha])
   @@index([clienteId, deletedAt])
   @@index([deletedAt, clienteId])
+  @@index([deletedAt, clienteId, fecha])
+  @@index([clienteId, tipo, fecha])
+  @@index([deletedAt, fecha])
+  @@index([tipo, fecha])
   @@map("actividades")
 }
 
@@ -346,6 +350,8 @@ model ClienteEnrichment {
   @@index([clienteId])
   @@index([clienteId, enrichedAt])
   @@index([status])
+  @@index([clienteId, status, enrichedAt])
+  @@index([status, enrichedAt])
   @@map("cliente_enrichments")
 }
 
@@ -537,6 +543,10 @@ model Mensaje {
   @@index([createdAt])
   @@index([clienteId, createdAt])
   @@index([deletedAt])
+  @@index([deletedAt, clienteId, createdAt])
+  @@index([clienteId, canal])
+  @@index([usuarioId, createdAt])
+  @@index([canal, estado, createdAt])
   @@map("mensajes")
 }
 
@@ -556,5 +566,7 @@ model AuditLog {
   @@index([userId])
   @@index([action])
   @@index([createdAt])
+  @@index([userId, createdAt])
+  @@index([resource, resourceId])
   @@map("audit_logs")
 }
