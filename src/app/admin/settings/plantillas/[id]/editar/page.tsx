@@ -3,7 +3,12 @@
 import { useState, useEffect, useCallback } from 'react';
 import { useRouter, useParams } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { EmailEditor } from '@/components/EmailEditor';
+import dynamic from 'next/dynamic';
+
+const EmailEditor = dynamic(
+  () => import('@/components/EmailEditor').then((m) => m.EmailEditor),
+  { ssr: false, loading: () => <div className="animate-pulse h-64 bg-gray-100 rounded-lg" /> },
+);
 import { VariableHelper } from '@/components/VariableHelper';
 import { ArrowLeftIcon } from '@heroicons/react/24/outline';
 import Link from 'next/link';

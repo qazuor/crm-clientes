@@ -1,7 +1,7 @@
 import { Metadata } from 'next';
 import { redirect } from 'next/navigation';
 import { auth } from '@/lib/auth';
-import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { SettingsSidebar } from '@/components/admin/settings/SettingsSidebar';
 
 export const metadata: Metadata = {

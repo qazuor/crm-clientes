@@ -2,13 +2,14 @@ import { auth } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { prisma } from '@/lib/prisma';
 import { notFound } from 'next/navigation';
-import EditarClienteForm from './EditarClienteForm';
+import { EditarClienteForm } from './EditarClienteForm';
 import Link from 'next/link';
-import LogoutButton from '@/components/LogoutButton';
-import { 
+import { LogoutButton } from '@/components/LogoutButton';
+import {
   ArrowLeftIcon,
   BuildingOffice2Icon
 } from '@heroicons/react/24/outline';
+import { Breadcrumbs } from '@/components/ui/Breadcrumbs';
 
 interface EditarClienteProps {
   params: {
@@ -63,17 +64,13 @@ export default async function EditarClientePage({ params }: EditarClienteProps) 
       <main className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
         {/* Breadcrumb */}
         <div className="mb-6">
-          <nav className="flex items-center space-x-2 text-sm text-gray-500">
-            <Link href="/clientes" className="hover:text-gray-900">
-              Clientes
-            </Link>
-            <span>/</span>
-            <Link href={`/clientes/${cliente.id}`} className="hover:text-gray-900">
-              {cliente.nombre}
-            </Link>
-            <span>/</span>
-            <span className="text-gray-900">Editar</span>
-          </nav>
+          <Breadcrumbs
+            items={[
+              { label: 'Clientes', href: '/clientes' },
+              { label: cliente.nombre, href: `/clientes/${cliente.id}` },
+              { label: 'Editar' },
+            ]}
+          />
         </div>
 
         {/* Título */}

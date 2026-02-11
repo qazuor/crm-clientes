@@ -4,7 +4,7 @@ import { prisma } from '@/lib/prisma';
 import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 
-import AuthenticatedLayout from '@/components/AuthenticatedLayout';
+import { AuthenticatedLayout } from '@/components/AuthenticatedLayout';
 import { 
   PhoneIcon,
   EnvelopeIcon,
