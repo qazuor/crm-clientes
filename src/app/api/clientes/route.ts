@@ -4,7 +4,7 @@ import { auth } from '@/lib/auth'
 import { registrarClienteCreado } from '@/lib/actividades-automaticas'
 import { logger } from '@/lib/logger'
 import { PAGINATION } from '@/lib/constants'
-import { Prisma, EstadoCliente, PrioridadCliente, FuenteCliente } from '@prisma/client'
+import type { Prisma, EstadoCliente, PrioridadCliente, FuenteCliente } from '@prisma/client'
 import {
   ClienteFiltersSchema,
   CreateClienteDTOSchema,

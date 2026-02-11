@@ -3,7 +3,7 @@ import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
 import { isAdmin } from '@/lib/rbac';
-import { CanalContacto } from '@prisma/client';
+import type { CanalContacto } from '@prisma/client';
 import {
   CreatePlantillaSchema,
   PlantillaFiltersSchema,

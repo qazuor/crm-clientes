@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
 import { auth } from '@/lib/auth'
 import { logger } from '@/lib/logger'
-import { TipoActividad, Prisma } from '@prisma/client'
+import type { TipoActividad, Prisma } from '@prisma/client'
 import {
   ActividadFiltersSchema,
   CreateActividadDTOSchema,

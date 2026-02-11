@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { auth } from '@/lib/auth';
 import { logger } from '@/lib/logger';
-import { CanalContacto, EstadoMensaje, Prisma } from '@prisma/client';
+import type { CanalContacto, EstadoMensaje, Prisma } from '@prisma/client';
 import { MensajeFiltersSchema } from '@/lib/validations/mensaje';
 import {
   successResponse,

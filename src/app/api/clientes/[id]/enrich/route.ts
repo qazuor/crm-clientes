@@ -9,28 +9,23 @@ import { NextRequest, NextResponse } from 'next/server';
 import { auth } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { logger } from '@/lib/logger';
-import { ConsensusService, type EnrichmentResult } from '@/lib/services/consensus-service';
-import { UrlVerificationService } from '@/lib/services/url-verification-service';
-import { SocialUrlValidatorService } from '@/lib/services/social-url-validator-service';
-import { EnrichmentPostProcessor } from '@/lib/services/enrichment-post-processor';
 import { BulkEnrichmentService } from '@/lib/services/bulk-enrichment-service';
-import { WebsiteAnalysisService } from '@/lib/services/website-analysis-service';
-
-import type { ClientContext } from '@/lib/services/enrichment-prompts';
-import type { EnrichmentMode, FieldReviewStatus, ReviewableField } from '@/types/enrichment';
+import type { FieldReviewStatus, ReviewableField } from '@/types/enrichment';
 import { enrichmentPostSchema, enrichmentPatchSchema } from '@/lib/validations/enrichment';
-import { ENRICHMENT } from '@/lib/constants';
+import { enrichmentRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limiter';
+import { handleEnrichPost } from './post-handler';
 
 interface RouteContext {
   params: Promise<{ id: string }>;
 }
 
 export async function POST(request: NextRequest, context: RouteContext): Promise<NextResponse> {
-  const startTime = Date.now();
+  const ip = getClientIp(request);
+  const rl = enrichmentRateLimit(`enrich:${ip}`);
+  if (!rl.success) return rateLimitResponse({ reset: rl.reset }) as unknown as NextResponse;
 
   try {
     const session = await auth();
-
     if (!session?.user) {
       logger.warn('[Enrich API] Unauthorized request');
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
@@ -38,49 +33,7 @@ export async function POST(request: NextRequest, context: RouteContext): Promise
 
     const { id } = await context.params;
 
-    logger.info('[Enrich API] Starting enrichment request', {
-      clienteId: id,
-      userId: session.user.id,
-      userName: session.user.name,
-    });
-
-    // Get client
-    const cliente = await prisma.cliente.findUnique({
-      where: { id },
-    });
-
-    if (!cliente) {
-      logger.warn('[Enrich API] Client not found', { clienteId: id });
-      return NextResponse.json({ error: 'Cliente no encontrado' }, { status: 404 });
-    }
-
-    // Check for already in-progress enrichment to prevent race conditions
-    if (cliente.enrichmentStatus === 'PENDING') {
-      const inProgressEnrichment = await prisma.clienteEnrichment.findFirst({
-        where: {
-          clienteId: id,
-          status: 'PENDING',
-          // Consider enrichments started within the last 10 minutes as in-progress
-          enrichedAt: { gte: new Date(Date.now() - ENRICHMENT.IN_PROGRESS_WINDOW_MS) },
-        },
-        orderBy: { enrichedAt: 'desc' },
-        select: { id: true, enrichedAt: true },
-      });
-
-      if (inProgressEnrichment) {
-        logger.warn('[Enrich API] Enrichment already in progress', {
-          clienteId: id,
-          enrichmentId: inProgressEnrichment.id,
-          enrichedAt: inProgressEnrichment.enrichedAt,
-        });
-        return NextResponse.json(
-          { error: 'Ya hay un enriquecimiento en progreso para este cliente' },
-          { status: 409 }
-        );
-      }
-    }
-
-    // Get request body for options (validated with Zod)
+    // Parse and validate request body
     let rawBody: unknown = {};
     try {
       rawBody = await request.json();
@@ -97,298 +50,14 @@ export async function POST(request: NextRequest, context: RouteContext): Promise
       );
     }
 
-    const options = validation.data;
-    const mode: EnrichmentMode = (options.mode === 'full' ? 'ai' : options.mode) || 'ai';
-
-    logger.info('[Enrich API] Enrichment options', {
+    return handleEnrichPost({
       clienteId: id,
-      mode,
-      quick: options.quick || false,
-      fields: options.fields || 'all',
-      useExternalApis: options.useExternalApis || false,
+      userId: session.user.id,
+      userName: session.user.name,
+      options: validation.data,
     });
-
-    // Check cooldown - find latest enrichment for this client
-    const latestEnrichment = await prisma.clienteEnrichment.findFirst({
-      where: { clienteId: id },
-      orderBy: { enrichedAt: 'desc' },
-      select: { enrichedAt: true },
-    });
-
-    let cooldownWarning = false;
-    let hoursAgo: number | null = null;
-    if (latestEnrichment?.enrichedAt) {
-      hoursAgo = (Date.now() - latestEnrichment.enrichedAt.getTime()) / (1000 * 60 * 60);
-      if (hoursAgo < ENRICHMENT.COOLDOWN_HOURS) {
-        cooldownWarning = true;
-      }
-    }
-
-    // Handle AI enrichment mode
-    if (mode === 'ai') {
-      const clientContext: ClientContext = {
-        nombre: cliente.nombre,
-        email: cliente.email,
-        telefono: cliente.telefono,
-        direccion: cliente.direccion,
-        ciudad: cliente.ciudad,
-        industria: cliente.industria,
-        sitioWeb: cliente.sitioWeb,
-        notas: cliente.notas,
-      };
-
-      // Run enrichment
-      let result: EnrichmentResult | Partial<EnrichmentResult>;
-
-      if (options.quick) {
-        result = await ConsensusService.quickEnrich(clientContext);
-      } else {
-        result = await ConsensusService.enrichClient(clientContext, options.fields);
-      }
-
-      // If we found a website, verify it
-      if (result.website?.value) {
-        const verification = await UrlVerificationService.verifyUrl(
-          result.website.value,
-          cliente.nombre
-        );
-
-        if (verification.isAccessible) {
-          result.website = {
-            ...result.website,
-            value: verification.url,
-            score: Math.min(
-              (result.website.score + (verification.confidence ?? 0.5)) / 2 * 1.1,
-              1.0
-            ),
-          };
-        }
-      }
-
-      // Validate social network URLs from socialProfiles object
-      if (result.socialProfiles?.value && typeof result.socialProfiles.value === 'object') {
-        const socialValidation = await SocialUrlValidatorService.validateSocialUrls(
-          result.socialProfiles.value as Record<string, string>
-        );
-
-        // Keep only accessible URLs
-        if (Object.keys(socialValidation.validatedProfiles).length > 0) {
-          result.socialProfiles = {
-            ...result.socialProfiles,
-            value: socialValidation.validatedProfiles,
-          };
-        } else {
-          // No valid URLs found - remove the field entirely
-          result.socialProfiles = undefined;
-        }
-
-        logger.info('[Enrich API] Social profiles validation complete', {
-          clienteId: id,
-          totalUrls: socialValidation.totalCount,
-          accessibleUrls: socialValidation.accessibleCount,
-          removedUrls: socialValidation.totalCount - socialValidation.accessibleCount,
-        });
-      }
-
-      // Validate individual social_* fields
-      const socialFields = [
-        'social_facebook',
-        'social_instagram',
-        'social_linkedin',
-        'social_twitter',
-        'social_whatsapp',
-        'social_youtube',
-        'social_tiktok',
-      ] as const;
-
-      const fieldsToValidate: Record<string, { value?: string | null }> = {};
-      for (const fieldName of socialFields) {
-        const field = result[fieldName as keyof typeof result] as { value?: string | null } | undefined;
-        if (field?.value) {
-          fieldsToValidate[fieldName] = field;
-        }
-      }
-
-      if (Object.keys(fieldsToValidate).length > 0) {
-        const individualValidation = await SocialUrlValidatorService.validateIndividualSocialFields(
-          fieldsToValidate
-        );
-
-        // Update or remove fields based on validation results
-        for (const fieldName of socialFields) {
-          const validatedUrl = individualValidation[fieldName];
-          if (validatedUrl === null) {
-            // URL was not accessible - remove the field
-            (result as Record<string, unknown>)[fieldName] = undefined;
-          } else if (validatedUrl) {
-            // URL was accessible - update with validated URL
-            const existingField = result[fieldName as keyof typeof result] as { value?: string; score?: number } | undefined;
-            if (existingField) {
-              (result as Record<string, unknown>)[fieldName] = {
-                ...existingField,
-                value: validatedUrl,
-              };
-            }
-          }
-        }
-      }
-
-      // Post-process with external APIs if requested
-      let externalDataUsed: string[] = [];
-      let externalErrors: string[] = [];
-
-      if (options.useExternalApis) {
-        const postProcessResult = await EnrichmentPostProcessor.process(
-          result as EnrichmentResult,
-          {
-            companyName: cliente.nombre,
-            location: cliente.ciudad || cliente.provincia || undefined,
-            verifyEmails: options.verifyEmails,
-            searchGoogleMaps: options.searchGoogleMaps,
-          }
-        );
-
-        result = postProcessResult.enhancedResult;
-        externalDataUsed = postProcessResult.externalDataUsed;
-        externalErrors = postProcessResult.errors;
-      }
-
-      // Save enrichment results as NEW record (1:N history)
-      const enrichmentData = {
-        website: result.website?.value ?? null,
-        websiteScore: result.website?.score ?? null,
-        emails: result.emails?.value ? JSON.stringify(result.emails.value) : null,
-        phones: result.phones?.value ? JSON.stringify(result.phones.value) : null,
-        address: result.address?.value ?? null,
-        addressScore: result.address?.score ?? null,
-        description: result.description?.value ?? null,
-        descriptionScore: result.description?.score ?? null,
-        industry: result.industry?.value ?? null,
-        industryScore: result.industry?.score ?? null,
-        companySize: result.companySize?.value ?? null,
-        companySizeScore: result.companySize?.score ?? null,
-        socialProfiles: result.socialProfiles?.value
-          ? JSON.stringify(result.socialProfiles.value)
-          : null,
-        aiProvidersUsed: result.providersUsed
-          ? JSON.stringify(result.providersUsed)
-          : null,
-        enrichedAt: new Date(),
-        status: 'PENDING',
-        reviewedAt: null,
-        reviewedBy: null,
-      };
-
-      const fieldStatuses = BulkEnrichmentService.buildFieldStatuses(enrichmentData);
-      const enrichmentDataWithFieldStatuses = {
-        ...enrichmentData,
-        fieldStatuses: JSON.stringify(fieldStatuses),
-      };
-
-      // Create new record (not upsert)
-      const savedEnrichment = await prisma.clienteEnrichment.create({
-        data: {
-          clienteId: id,
-          ...enrichmentDataWithFieldStatuses,
-        },
-      });
-
-      // Update enrichmentStatus and ultimaIA on Cliente
-      await prisma.cliente.update({
-        where: { id },
-        data: { enrichmentStatus: 'PENDING', ultimaIA: new Date() },
-      });
-
-      // Log activity
-      const externalApisInfo = externalDataUsed.length > 0
-        ? ` | APIs externas: ${externalDataUsed.join(', ')}`
-        : '';
-
-      if (session.user.id) {
-        try {
-          const userExists = await prisma.user.findUnique({
-            where: { id: session.user.id },
-            select: { id: true },
-          });
-
-          if (userExists) {
-            await prisma.actividad.create({
-              data: {
-                tipo: 'IA_ENRIQUECIMIENTO',
-                descripcion: `Enriquecimiento IA completado. Providers: ${result.providersUsed?.join(', ') || 'ninguno'}${externalApisInfo}`,
-                clienteId: id,
-                usuarioId: session.user.id,
-              },
-            });
-          }
-        } catch (activityError) {
-          logger.warn('[Enrich API] Could not log activity', { error: activityError instanceof Error ? activityError.message : String(activityError) });
-        }
-      }
-
-      const allErrors = [...((result as EnrichmentResult).errors || []), ...externalErrors.map(e => ({ provider: 'external' as const, error: e }))];
-
-      return NextResponse.json({
-        success: true,
-        enrichment: savedEnrichment,
-        result,
-        externalDataUsed,
-        errors: allErrors,
-        cooldownWarning,
-        hoursAgo: hoursAgo !== null ? Math.round(hoursAgo * 10) / 10 : null,
-      });
-    }
-
-    // Handle Web analysis mode
-    if (mode === 'web') {
-      if (!cliente.sitioWeb) {
-        return NextResponse.json(
-          { error: 'El cliente no tiene sitio web configurado' },
-          { status: 400 }
-        );
-      }
-
-      // Run full website analysis (settings determine which analyses are enabled)
-      const analysisResult = await WebsiteAnalysisService.analyzeWebsite({
-        clienteId: id,
-        url: cliente.sitioWeb,
-        // All options use defaults from SettingsService
-      });
-
-      // Log activity
-      if (session.user.id) {
-        try {
-          await prisma.actividad.create({
-            data: {
-              tipo: 'IA_ENRIQUECIMIENTO',
-              descripcion: `Analisis web completado para ${cliente.sitioWeb}`,
-              clienteId: id,
-              usuarioId: session.user.id,
-            },
-          });
-        } catch {
-          // Non-critical
-        }
-      }
-
-      return NextResponse.json({
-        success: true,
-        websiteAnalysis: analysisResult,
-        cooldownWarning,
-        hoursAgo: hoursAgo !== null ? Math.round(hoursAgo * 10) / 10 : null,
-      });
-    }
-
-    return NextResponse.json(
-      { error: 'Modo invalido. Usar "ai" o "web"' },
-      { status: 400 }
-    );
   } catch (error) {
-    const elapsed = Date.now() - startTime;
-    logger.error('[Enrich API] Request failed', error instanceof Error ? error : new Error(String(error)), {
-      elapsed,
-      errorMessage: error instanceof Error ? error.message : 'Unknown error',
-    });
+    logger.error('[Enrich API] POST request failed', error instanceof Error ? error : new Error(String(error)));
     return NextResponse.json(
       { error: 'Error en enriquecimiento' },
       { status: 500 }

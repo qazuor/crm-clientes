@@ -12,9 +12,14 @@ import { BulkEnrichmentService } from '@/lib/services/bulk-enrichment-service';
 import { AISdkService } from '@/lib/services/ai-sdk-service';
 import { BULK } from '@/lib/constants';
 import type { AIProvider } from '@/types/enrichment';
+import { bulkEnrichmentRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limiter';
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const ip = getClientIp(request);
+    const rl = bulkEnrichmentRateLimit(`bulk-enrich:${ip}`);
+    if (!rl.success) return rateLimitResponse({ reset: rl.reset }) as unknown as NextResponse;
+
     const session = await auth();
 
     if (!session?.user) {

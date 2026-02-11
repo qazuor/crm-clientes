@@ -7,6 +7,7 @@ import { createApiKeySchema } from '@/lib/validations/api-key';
 import { logAudit } from '@/lib/audit';
 import type { ApiKeyResponse, ApiKeyProvider } from '@/types/enrichment';
 import type { ApiResponse } from '@/types';
+import { adminRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limiter';
 
 // GET /api/admin/api-keys - List all API keys
 export async function GET(): Promise<NextResponse<ApiResponse<ApiKeyResponse[]>>> {
@@ -40,6 +41,10 @@ export async function POST(
   request: NextRequest
 ): Promise<NextResponse<ApiResponse<ApiKeyResponse>>> {
   try {
+    const ip = getClientIp(request);
+    const rl = adminRateLimit(`admin-keys:${ip}`);
+    if (!rl.success) return rateLimitResponse({ reset: rl.reset }) as unknown as NextResponse<ApiResponse<ApiKeyResponse>>;
+
     const session = await auth();
 
     if (!session || !isAdmin(session.user.role)) {

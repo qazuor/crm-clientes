@@ -10,10 +10,15 @@ import {
   unauthorizedResponse,
   errorResponse,
 } from '@/lib/api-response';
+import { bulkMessagingRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limiter';
 
 // POST /api/mensajes/send-bulk - Envio masivo
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const ip = getClientIp(request);
+    const rl = bulkMessagingRateLimit(`msg-bulk:${ip}`);
+    if (!rl.success) return rateLimitResponse({ reset: rl.reset }) as unknown as NextResponse;
+
     const session = await auth();
     if (!session) return unauthorizedResponse();
 

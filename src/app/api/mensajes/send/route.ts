@@ -10,10 +10,15 @@ import {
   unauthorizedResponse,
   errorResponse,
 } from '@/lib/api-response';
+import { messagingRateLimit, getClientIp, rateLimitResponse } from '@/lib/rate-limiter';
 
 // POST /api/mensajes/send - Envio individual
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const ip = getClientIp(request);
+    const rl = messagingRateLimit(`msg-send:${ip}`);
+    if (!rl.success) return rateLimitResponse({ reset: rl.reset }) as unknown as NextResponse;
+
     const session = await auth();
     if (!session) return unauthorizedResponse();
 
