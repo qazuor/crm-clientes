@@ -90,5 +90,3 @@ export function EnrichmentBadge({ clienteId }: EnrichmentBadgeProps) {
     </span>
   );
 }
-
-export default EnrichmentBadge;

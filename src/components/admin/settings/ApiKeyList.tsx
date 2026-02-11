@@ -2,10 +2,13 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { CheckCircleIcon, XCircleIcon, EyeIcon, EyeSlashIcon } from '@heroicons/react/24/outline';
+import { HelpCircle } from 'lucide-react';
 import { Button } from '@/components/ui/Button';
+import { Tooltip } from '@/components/ui/Tooltip';
 import type { ApiKeyResponse, ApiKeyProvider, AIProvider } from '@/types/enrichment';
 import { PROVIDER_INFO, AI_PROVIDER_MODELS } from '@/types/enrichment';
 import { useApiKeys, useCreateApiKey, useUpdateApiKey, useDeleteApiKey } from '@/hooks/useApiKeys';
+import { logger } from '@/lib/logger';
 
 // Provider row component
 function ProviderRow({
@@ -85,7 +88,7 @@ function ProviderRow({
           setShowKey(true);
         }
       } catch (error) {
-        console.error('Error revealing key:', error);
+        logger.error('Error revealing key', error instanceof Error ? error : new Error(String(error)));
       } finally {
         setIsRevealing(false);
       }
@@ -145,6 +148,11 @@ function ProviderRow({
         <div className="flex-1 min-w-0">
           <div className="flex items-center gap-2 mb-1">
             <h4 className="font-medium text-gray-900">{info.name}</h4>
+            <Tooltip content={info.description}>
+              <button type="button" className="text-gray-400 hover:text-gray-600">
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </Tooltip>
             {isConfigured && (
               <span className={`text-xs px-2 py-0.5 rounded-full ${
                 existingKey.enabled
@@ -393,9 +401,16 @@ export function ApiKeyList() {
       {/* AI Providers */}
       {(filter === 'all' || filter === 'ai') && (
         <div>
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-            Proveedores de IA
-          </h3>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              Proveedores de IA
+            </h3>
+            <Tooltip content="Servicios de inteligencia artificial para analizar y enriquecer datos de clientes con información relevante del negocio.">
+              <button type="button" className="text-gray-400 hover:text-gray-600">
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          </div>
           <p className="text-xs text-gray-400 mb-4">
             Estos proveedores se usan para el enriquecimiento inteligente de clientes. Configura al menos uno.
           </p>
@@ -418,9 +433,16 @@ export function ApiKeyList() {
       {/* External APIs */}
       {(filter === 'all' || filter === 'external') && (
         <div>
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-3">
-            APIs Externas
-          </h3>
+          <div className="flex items-center gap-2 mb-3">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              APIs Externas
+            </h3>
+            <Tooltip content="Servicios de terceros que proporcionan datos como capturas de pantalla, rendimiento web, verificación de emails, etc.">
+              <button type="button" className="text-gray-400 hover:text-gray-600">
+                <HelpCircle className="h-4 w-4" />
+              </button>
+            </Tooltip>
+          </div>
           <p className="text-xs text-gray-400 mb-4">
             APIs opcionales para obtener datos adicionales como capturas de pantalla, verificacion de emails, etc.
           </p>

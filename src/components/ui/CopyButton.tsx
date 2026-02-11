@@ -2,6 +2,7 @@
 
 import { useState } from 'react';
 import { ClipboardIcon, CheckIcon } from '@heroicons/react/24/outline';
+import { logger } from '@/lib/logger';
 
 interface CopyButtonProps {
   text: string;
@@ -17,7 +18,7 @@ export function CopyButton({ text, label }: CopyButtonProps) {
       setCopied(true);
       setTimeout(() => setCopied(false), 2000);
     } catch (err) {
-      console.error('Failed to copy:', err);
+      logger.error('Failed to copy', err instanceof Error ? err : new Error(String(err)));
     }
   };
 

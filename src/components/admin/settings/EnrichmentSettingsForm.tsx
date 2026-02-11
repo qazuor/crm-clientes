@@ -12,6 +12,7 @@ import {
   useResetEnrichmentSettings,
 } from '@/hooks/useEnrichmentSettings';
 import type { MatchMode } from '@/types/enrichment';
+import { logger } from '@/lib/logger';
 
 const matchModeOptions: { value: MatchMode; label: string; description: string }[] = [
   {
@@ -85,7 +86,7 @@ export function EnrichmentSettingsForm() {
     try {
       await updateSettings({ [key]: value });
     } catch (err) {
-      console.error('Error updating setting:', err);
+      logger.error('Error updating setting', err instanceof Error ? err : new Error(String(err)));
     }
   };
 
@@ -94,7 +95,7 @@ export function EnrichmentSettingsForm() {
     try {
       await resetSettings();
     } catch (err) {
-      console.error('Error resetting settings:', err);
+      logger.error('Error resetting settings', err instanceof Error ? err : new Error(String(err)));
     }
   };
 

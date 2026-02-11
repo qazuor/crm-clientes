@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { Button } from '@/components/ui/Button';
+import { logger } from '@/lib/logger';
 
 interface QuotaInfo {
   service: string;
@@ -41,7 +42,7 @@ export function QuotaStatus() {
         setLastUpdate(new Date().toLocaleTimeString());
       }
     } catch (error) {
-      console.error('Error fetching quotas:', error);
+      logger.error('Error fetching quotas', error instanceof Error ? error : new Error(String(error)));
     } finally {
       setLoading(false);
     }
@@ -57,7 +58,7 @@ export function QuotaStatus() {
         await fetchQuotas();
       }
     } catch (error) {
-      console.error('Error resetting quotas:', error);
+      logger.error('Error resetting quotas', error instanceof Error ? error : new Error(String(error)));
     }
   };
 

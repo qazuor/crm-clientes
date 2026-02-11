@@ -6,7 +6,12 @@ import { useEnrichment } from '@/hooks/useEnrichment';
 import { EnrichmentSummary } from './EnrichmentSummary';
 import { WebsiteSummary } from './WebsiteSummary';
 import { EnrichmentHistory } from './EnrichmentHistory';
-import { EnrichmentModal } from './EnrichmentModal';
+import dynamic from 'next/dynamic';
+
+const EnrichmentModal = dynamic(
+  () => import('./EnrichmentModal').then((m) => m.EnrichmentModal),
+  { ssr: false },
+);
 import { SparklesIcon, ChartBarIcon } from '@heroicons/react/24/outline';
 
 interface ClientEnrichmentSectionProps {

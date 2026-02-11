@@ -1,14 +1,18 @@
 'use client';
 
-import { useState, useMemo, useCallback } from 'react';
+import { useState, useMemo, useCallback, useRef } from 'react';
 import * as Dialog from '@radix-ui/react-dialog';
-import { XMarkIcon, CheckCircleIcon, ChevronDownIcon, ChevronUpIcon } from '@heroicons/react/24/outline';
-import { useEnrichment, type BatchFieldItem } from '@/hooks/useEnrichment';
+import { XMarkIcon } from '@heroicons/react/24/outline';
+import { useEnrichment } from '@/hooks/useEnrichment';
+import { BulkAccordionReview } from './BulkAccordionReview';
+import type { BulkResult } from './BulkAccordionReview';
 import { EnrichmentForm } from './EnrichmentForm';
-import { EnrichmentReview, type ReviewField } from './EnrichmentReview';
+import { EnrichmentReview } from './EnrichmentReview';
+import type { ReviewField } from './EnrichmentReview';
 import { EnrichmentProgress } from './shared/EnrichmentProgress';
-import { ConfidenceBadge } from './shared/ConfidenceBadge';
 import type { AIProvider, FieldReviewStatus } from '@/types/enrichment';
+import { logger } from '@/lib/logger';
+import { ConfirmationDialog } from '@/components/ui/ConfirmationDialog';
 
 const FIELD_LABELS: Record<string, string> = {
   website: 'Sitio Web',
@@ -56,22 +60,6 @@ interface EnrichmentModalProps {
 
 type ModalStep = 'form' | 'loading' | 'review' | 'done';
 
-interface BulkResultItem {
-  clienteId: string;
-  clienteName: string;
-  success: boolean;
-  aiEnriched?: boolean;
-  websiteAnalyzed?: boolean;
-  error?: string;
-}
-
-interface BulkResult {
-  total: number;
-  successful: number;
-  failed: number;
-  results: BulkResultItem[];
-}
-
 /**
  * Main enrichment modal overlay. Works for both individual (1 client) and bulk (N clients).
  */
@@ -94,6 +82,8 @@ export function EnrichmentModal({
 
   const [step, setStep] = useState<ModalStep>('form');
   const [cooldownConfirmed, setCooldownConfirmed] = useState(false);
+  const [cooldownDialogOpen, setCooldownDialogOpen] = useState(false);
+  const pendingCooldownAction = useRef<(() => Promise<void>) | null>(null);
   const [enrichError, setEnrichError] = useState<string | null>(null);
   const [bulkResult, setBulkResult] = useState<BulkResult | null>(null);
   const [autoWebEnrichmentInProgress, setAutoWebEnrichmentInProgress] = useState(false);
@@ -213,15 +203,54 @@ export function EnrichmentModal({
       searchGoogleMaps: boolean;
       confidenceThreshold: number;
     }) => {
+      const executeAI = async () => {
+        setEnrichError(null);
+        setStep('loading');
+
+        try {
+          if (isBulk) {
+            const result = await enrichment.bulk.enrich({
+              clienteIds,
+              includeAI: true,
+              includeWebsiteAnalysis: false,
+              provider: options.provider,
+            });
+            setBulkResult(result);
+            await enrichment.bulk.refetch();
+            setStep('review');
+          } else {
+            await enrichment.enrich({
+              mode: 'ai',
+              provider: options.provider === 'auto' ? undefined : options.provider,
+              quick: options.quick,
+              useExternalApis: options.useExternalApis,
+              verifyEmails: options.verifyEmails,
+              searchGoogleMaps: options.searchGoogleMaps,
+              confidenceThreshold: options.confidenceThreshold,
+            });
+            await enrichment.refetch();
+            setStep('review');
+          }
+        } catch (err) {
+          setEnrichError(err instanceof Error ? err.message : 'Error en enriquecimiento');
+          setStep('form');
+        }
+      };
+
       // Check cooldown
       if (enrichment.cooldown.shouldWarn && !cooldownConfirmed) {
-        const confirmed = window.confirm(
-          `Este cliente fue enriquecido hace ${enrichment.cooldown.hoursAgo} horas. ¿Desea continuar?`
-        );
-        if (!confirmed) return;
-        setCooldownConfirmed(true);
+        pendingCooldownAction.current = executeAI;
+        setCooldownDialogOpen(true);
+        return;
       }
 
+      await executeAI();
+    },
+    [enrichment, clienteIds, isBulk, cooldownConfirmed]
+  );
+
+  const handleSubmitWeb = useCallback(async () => {
+    const executeWeb = async () => {
       setEnrichError(null);
       setStep('loading');
 
@@ -229,64 +258,28 @@ export function EnrichmentModal({
         if (isBulk) {
           const result = await enrichment.bulk.enrich({
             clienteIds,
-            includeAI: true,
-            includeWebsiteAnalysis: false,
-            provider: options.provider,
+            includeAI: false,
+            includeWebsiteAnalysis: true,
           });
           setBulkResult(result);
-          await enrichment.bulk.refetch();
-          setStep('review');
+          setStep('done');
         } else {
-          await enrichment.enrich({
-            mode: 'ai',
-            provider: options.provider === 'auto' ? undefined : options.provider,
-            quick: options.quick,
-            useExternalApis: options.useExternalApis,
-            verifyEmails: options.verifyEmails,
-            searchGoogleMaps: options.searchGoogleMaps,
-            confidenceThreshold: options.confidenceThreshold,
-          });
-          // Refetch to get the new enrichment data for review
-          await enrichment.refetch();
-          setStep('review');
+          await enrichment.enrichWeb();
+          setStep('done');
         }
       } catch (err) {
-        setEnrichError(err instanceof Error ? err.message : 'Error en enriquecimiento');
+        setEnrichError(err instanceof Error ? err.message : 'Error en análisis web');
         setStep('form');
       }
-    },
-    [enrichment, clienteIds, isBulk, cooldownConfirmed]
-  );
+    };
 
-  const handleSubmitWeb = useCallback(async () => {
     if (enrichment.cooldown.shouldWarn && !cooldownConfirmed) {
-      const confirmed = window.confirm(
-        `Este cliente fue enriquecido hace ${enrichment.cooldown.hoursAgo} horas. ¿Desea continuar?`
-      );
-      if (!confirmed) return;
-      setCooldownConfirmed(true);
+      pendingCooldownAction.current = executeWeb;
+      setCooldownDialogOpen(true);
+      return;
     }
 
-    setEnrichError(null);
-    setStep('loading');
-
-    try {
-      if (isBulk) {
-        const result = await enrichment.bulk.enrich({
-          clienteIds,
-          includeAI: false,
-          includeWebsiteAnalysis: true,
-        });
-        setBulkResult(result);
-        setStep('done');
-      } else {
-        await enrichment.enrichWeb();
-        setStep('done');
-      }
-    } catch (err) {
-      setEnrichError(err instanceof Error ? err.message : 'Error en análisis web');
-      setStep('form');
-    }
+    await executeWeb();
   }, [enrichment, cooldownConfirmed, isBulk, clienteIds]);
 
   const handleReviewConfirm = useCallback(
@@ -308,7 +301,7 @@ export function EnrichmentModal({
           await enrichment.enrichWeb();
         } catch (err) {
           // Don't block the confirmation flow if web enrichment fails
-          console.error('Auto website enrichment failed:', err);
+          logger.error('Auto website enrichment failed', err instanceof Error ? err : new Error(String(err)));
         } finally {
           setAutoWebEnrichmentInProgress(false);
         }
@@ -331,6 +324,14 @@ export function EnrichmentModal({
     [enrichment]
   );
 
+  const handleCooldownConfirm = useCallback(async () => {
+    setCooldownConfirmed(true);
+    setCooldownDialogOpen(false);
+    const action = pendingCooldownAction.current;
+    pendingCooldownAction.current = null;
+    if (action) await action();
+  }, []);
+
   const handleClose = () => {
     setStep('form');
     setCooldownConfirmed(false);
@@ -345,6 +346,7 @@ export function EnrichmentModal({
     : `Enriquecer: ${clienteNames[0] ?? 'Cliente'}`;
 
   return (
+    <>
     <Dialog.Root open={isOpen} onOpenChange={(open) => !open && handleClose()}>
       <Dialog.Portal>
         <Dialog.Overlay className="fixed inset-0 bg-black/50 animate-in fade-in-0" />
@@ -479,437 +481,18 @@ export function EnrichmentModal({
         </Dialog.Content>
       </Dialog.Portal>
     </Dialog.Root>
+
+    <ConfirmationDialog
+      open={cooldownDialogOpen}
+      onOpenChange={setCooldownDialogOpen}
+      title="Cooldown activo"
+      description={`Este cliente fue enriquecido hace ${enrichment.cooldown.hoursAgo ?? '?'} horas. ¿Desea continuar de todos modos?`}
+      confirmText="Continuar"
+      cancelText="Cancelar"
+      variant="warning"
+      onConfirm={handleCooldownConfirm}
+    />
+    </>
   );
 }
 
-// ─── Types for BulkAccordionReview ──────────────────────────────────
-
-type PendingConfirmationItem = {
-  id: string;
-  clienteId: string;
-  clienteName: string;
-  website: string | null;
-  industry: string | null;
-  description: string | null;
-  companySize: string | null;
-  address: string | null;
-  emails: Array<{ email: string; type?: string }> | null;
-  phones: Array<{ number: string; type?: string }> | null;
-  socialProfiles: Record<string, string> | null;
-  websiteScore: number | null;
-  industryScore: number | null;
-  descriptionScore: number | null;
-  companySizeScore: number | null;
-  addressScore: number | null;
-  aiProvidersUsed: string[] | null;
-  enrichedAt: string | null;
-  fieldStatuses: Record<string, string> | null;
-  // Current client values for comparison
-  currentWebsite: string | null;
-  currentIndustry: string | null;
-  currentDescription: string | null;
-};
-
-interface AccordionFieldInfo {
-  name: string;
-  label: string;
-  value: string;
-  currentValue: string | null;
-  score: number;
-  status: string;
-}
-
-/** Extract displayable fields with data from a pending confirmation record. */
-function extractFields(item: PendingConfirmationItem): AccordionFieldInfo[] {
-  const fields: AccordionFieldInfo[] = [];
-  const statuses = item.fieldStatuses ?? {};
-
-  // Helper to check if values are different (normalize for comparison)
-  const isDifferent = (current: string | null | undefined, suggested: string | null | undefined): boolean => {
-    const c = (current ?? '').trim().toLowerCase();
-    const s = (suggested ?? '').trim().toLowerCase();
-    return c !== s;
-  };
-
-  const add = (
-    name: string,
-    value: string | null | undefined,
-    currentValue: string | null | undefined,
-    score: number | null | undefined
-  ) => {
-    if (!value) return;
-    // Skip if values are the same
-    if (!isDifferent(currentValue, value)) return;
-    fields.push({
-      name,
-      label: FIELD_LABELS[name] ?? name,
-      value,
-      currentValue: currentValue ?? null,
-      score: score ?? 0,
-      status: statuses[name] ?? 'PENDING',
-    });
-  };
-
-  add('website', item.website, item.currentWebsite, item.websiteScore);
-  add('industry', item.industry, item.currentIndustry, item.industryScore);
-  add('description', item.description, item.currentDescription, item.descriptionScore);
-  add('companySize', item.companySize, null, item.companySizeScore);
-  add('address', item.address, null, item.addressScore);
-
-  if (item.emails && item.emails.length > 0) {
-    const emailStr = item.emails.map((e) => e.email).join(', ');
-    fields.push({
-      name: 'emails',
-      label: FIELD_LABELS.emails,
-      value: emailStr,
-      currentValue: null,
-      score: 0.7,
-      status: statuses.emails ?? 'PENDING',
-    });
-  }
-
-  if (item.phones && item.phones.length > 0) {
-    const phoneStr = item.phones.map((p) => p.number).join(', ');
-    fields.push({
-      name: 'phones',
-      label: FIELD_LABELS.phones,
-      value: phoneStr,
-      currentValue: null,
-      score: 0.7,
-      status: statuses.phones ?? 'PENDING',
-    });
-  }
-
-  // Individual social network fields
-  if (item.socialProfiles && Object.keys(item.socialProfiles).length > 0) {
-    for (const [network, url] of Object.entries(item.socialProfiles)) {
-      if (!url) continue;
-      const fieldName = `social_${network}`;
-      fields.push({
-        name: fieldName,
-        label: FIELD_LABELS[fieldName] ?? network.charAt(0).toUpperCase() + network.slice(1),
-        value: url,
-        currentValue: null,
-        score: 0.6,
-        status: statuses[fieldName] ?? 'PENDING',
-      });
-    }
-  }
-
-  // Only return fields that are still PENDING
-  return fields.filter((f) => f.status === 'PENDING');
-}
-
-/**
- * Accordion-based bulk review: expand each client, select/deselect individual fields.
- */
-function BulkAccordionReview({
-  bulkResult,
-  enrichedClientIds,
-  pendingConfirmation,
-  isBulkLoading,
-  onConfirmBatch,
-  onRejectBatch,
-  isConfirming,
-  isRejecting,
-  onClose,
-}: {
-  bulkResult: BulkResult;
-  enrichedClientIds: string[];
-  pendingConfirmation: PendingConfirmationItem[];
-  isBulkLoading: boolean;
-  onConfirmBatch: (items: BatchFieldItem[]) => Promise<unknown>;
-  onRejectBatch: (items: BatchFieldItem[]) => Promise<unknown>;
-  isConfirming: boolean;
-  isRejecting: boolean;
-  onClose: () => void;
-}) {
-  const [expandedIds, setExpandedIds] = useState<Set<string>>(new Set());
-  const [reviewDone, setReviewDone] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-
-  // Filter to only clients that were enriched in this batch and have pending data
-  const relevantClients = useMemo(() => {
-    const enrichedSet = new Set(enrichedClientIds);
-    return pendingConfirmation
-      .filter((item) => enrichedSet.has(item.clienteId))
-      .map((item) => ({
-        ...item,
-        fields: extractFields(item),
-      }))
-      .filter((item) => item.fields.length > 0);
-  }, [pendingConfirmation, enrichedClientIds]);
-
-  // Per-client field selections: clienteId → Set<fieldName>
-  const [selections, setSelections] = useState<Record<string, Set<string>>>(() => {
-    const initial: Record<string, Set<string>> = {};
-    // We need to compute from pendingConfirmation directly in initializer
-    const enrichedSet = new Set(enrichedClientIds);
-    for (const item of pendingConfirmation) {
-      if (!enrichedSet.has(item.clienteId)) continue;
-      const fields = extractFields(item);
-      if (fields.length === 0) continue;
-      const selected = new Set<string>();
-      for (const f of fields) {
-        if (f.score >= 0.6) selected.add(f.name);
-      }
-      initial[item.clienteId] = selected;
-    }
-    return initial;
-  });
-
-  // Totals
-  const totalFields = relevantClients.reduce((sum, c) => sum + c.fields.length, 0);
-  const totalSelected = Object.values(selections).reduce((sum, s) => sum + s.size, 0);
-  const clientsWithSelections = Object.entries(selections).filter(([, s]) => s.size > 0).length;
-
-  const isProcessing = isConfirming || isRejecting;
-
-  const toggleExpanded = (clienteId: string) => {
-    setExpandedIds((prev) => {
-      const next = new Set(prev);
-      if (next.has(clienteId)) next.delete(clienteId);
-      else next.add(clienteId);
-      return next;
-    });
-  };
-
-  const toggleField = (clienteId: string, fieldName: string) => {
-    setSelections((prev) => {
-      const current = prev[clienteId] ?? new Set<string>();
-      const next = new Set(current);
-      if (next.has(fieldName)) next.delete(fieldName);
-      else next.add(fieldName);
-      return { ...prev, [clienteId]: next };
-    });
-  };
-
-  const selectAll = (clienteId: string, fields: AccordionFieldInfo[]) => {
-    setSelections((prev) => ({
-      ...prev,
-      [clienteId]: new Set(fields.map((f) => f.name)),
-    }));
-  };
-
-  const deselectAll = (clienteId: string) => {
-    setSelections((prev) => ({
-      ...prev,
-      [clienteId]: new Set<string>(),
-    }));
-  };
-
-  const handleSubmit = async () => {
-    setError(null);
-    try {
-      const confirmItems: BatchFieldItem[] = [];
-      const rejectItems: BatchFieldItem[] = [];
-
-      for (const client of relevantClients) {
-        const selected = selections[client.clienteId] ?? new Set<string>();
-        const selectedFields = client.fields.filter((f) => selected.has(f.name)).map((f) => f.name);
-        const rejectedFields = client.fields.filter((f) => !selected.has(f.name)).map((f) => f.name);
-
-        if (selectedFields.length > 0) {
-          confirmItems.push({ clienteId: client.clienteId, fields: selectedFields });
-        }
-        if (rejectedFields.length > 0) {
-          rejectItems.push({ clienteId: client.clienteId, fields: rejectedFields });
-        }
-      }
-
-      if (confirmItems.length > 0) await onConfirmBatch(confirmItems);
-      if (rejectItems.length > 0) await onRejectBatch(rejectItems);
-      setReviewDone(true);
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Error al procesar revisión');
-    }
-  };
-
-  // Done state
-  if (reviewDone) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-6">
-        <div className="flex h-12 w-12 items-center justify-center rounded-full bg-green-100">
-          <CheckCircleIcon className="h-6 w-6 text-green-600" />
-        </div>
-        <p className="text-sm font-medium text-gray-900">Revisión completada</p>
-        <p className="text-xs text-gray-500">Los datos han sido procesados correctamente.</p>
-        <button
-          type="button"
-          onClick={onClose}
-          className="rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-        >
-          Cerrar
-        </button>
-      </div>
-    );
-  }
-
-  // Loading state
-  if (isBulkLoading && relevantClients.length === 0) {
-    return (
-      <div className="flex flex-col items-center gap-3 py-8">
-        <div className="h-6 w-6 animate-spin rounded-full border-2 border-blue-600 border-t-transparent" />
-        <p className="text-sm text-gray-500">Cargando datos de enriquecimiento...</p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col gap-4">
-      {/* Summary */}
-      <div className="rounded-lg border border-gray-200 bg-gray-50 p-3">
-        <div className="flex items-center justify-between text-sm">
-          <span className="font-medium text-gray-900">Resultados</span>
-          <span className="text-gray-500">
-            {bulkResult.successful}/{bulkResult.total} exitosos
-          </span>
-        </div>
-        {bulkResult.failed > 0 && (
-          <p className="mt-1 text-xs text-red-600">
-            {bulkResult.failed} cliente{bulkResult.failed !== 1 ? 's' : ''} con errores
-          </p>
-        )}
-      </div>
-
-      {error && (
-        <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-700">
-          {error}
-        </div>
-      )}
-
-      {/* Accordion */}
-      {relevantClients.length > 0 ? (
-        <>
-          <div className="max-h-96 overflow-y-auto rounded-lg border border-gray-200">
-            {relevantClients.map((client) => {
-              const isExpanded = expandedIds.has(client.clienteId);
-              const selected = selections[client.clienteId] ?? new Set<string>();
-              return (
-                <div key={client.clienteId} className="border-b border-gray-100 last:border-b-0">
-                  {/* Accordion header */}
-                  <button
-                    type="button"
-                    onClick={() => toggleExpanded(client.clienteId)}
-                    className="flex w-full items-center gap-3 px-4 py-3 text-left hover:bg-gray-50"
-                  >
-                    <span className="flex-1 text-sm font-medium text-gray-900 truncate">
-                      {client.clienteName}
-                    </span>
-                    <span className="text-xs text-gray-500">
-                      {selected.size} de {client.fields.length}
-                    </span>
-                    {isExpanded ? (
-                      <ChevronUpIcon className="h-4 w-4 text-gray-400" />
-                    ) : (
-                      <ChevronDownIcon className="h-4 w-4 text-gray-400" />
-                    )}
-                  </button>
-
-                  {/* Accordion body */}
-                  {isExpanded && (
-                    <div className="border-t border-gray-100 bg-white px-4 py-3">
-                      {/* Toolbar */}
-                      <div className="mb-2 flex items-center gap-2">
-                        <button
-                          type="button"
-                          onClick={() => selectAll(client.clienteId, client.fields)}
-                          disabled={isProcessing}
-                          className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                        >
-                          Seleccionar todo
-                        </button>
-                        <span className="text-gray-300">|</span>
-                        <button
-                          type="button"
-                          onClick={() => deselectAll(client.clienteId)}
-                          disabled={isProcessing}
-                          className="text-xs text-blue-600 hover:text-blue-800 disabled:opacity-50"
-                        >
-                          Deseleccionar todo
-                        </button>
-                      </div>
-
-                      {/* Fields */}
-                      <div className="flex flex-col gap-1.5">
-                        {client.fields.map((field) => (
-                          <label
-                            key={field.name}
-                            className={`flex cursor-pointer items-center gap-3 rounded-md border px-3 py-2 transition-colors ${
-                              selected.has(field.name)
-                                ? 'border-blue-300 bg-blue-50'
-                                : 'border-gray-200 bg-white hover:bg-gray-50'
-                            }`}
-                          >
-                            <input
-                              type="checkbox"
-                              checked={selected.has(field.name)}
-                              onChange={() => toggleField(client.clienteId, field.name)}
-                              disabled={isProcessing}
-                              className="rounded text-blue-600"
-                            />
-                            <div className="flex flex-1 flex-col min-w-0">
-                              <div className="flex items-center gap-2">
-                                <span className="text-sm font-medium text-gray-900">{field.label}</span>
-                                <ConfidenceBadge score={field.score} />
-                              </div>
-                              <span className="mt-0.5 text-xs text-gray-700 break-words">
-                                {field.value}
-                              </span>
-                            </div>
-                          </label>
-                        ))}
-                      </div>
-                    </div>
-                  )}
-                </div>
-              );
-            })}
-          </div>
-
-          {/* Global actions */}
-          <div className="flex flex-col gap-3 border-t border-gray-200 pt-4">
-            <p className="text-xs text-gray-500">
-              {totalSelected} campo{totalSelected !== 1 ? 's' : ''} seleccionado
-              {totalSelected !== 1 ? 's' : ''} de {clientsWithSelections} cliente
-              {clientsWithSelections !== 1 ? 's' : ''}
-            </p>
-            <div className="flex items-center gap-3">
-              <button
-                type="button"
-                onClick={handleSubmit}
-                disabled={isProcessing || totalFields === 0}
-                className="flex-1 rounded bg-green-600 px-4 py-2 text-sm font-medium text-white hover:bg-green-700 disabled:opacity-50"
-              >
-                {isConfirming
-                  ? 'Aceptando...'
-                  : `Aceptar ${totalSelected} / Rechazar ${totalFields - totalSelected}`}
-              </button>
-              <button
-                type="button"
-                onClick={onClose}
-                disabled={isProcessing}
-                className="rounded border border-gray-300 px-4 py-2 text-sm font-medium text-gray-700 hover:bg-gray-50 disabled:opacity-50"
-              >
-                Cancelar
-              </button>
-            </div>
-          </div>
-        </>
-      ) : (
-        <div className="border-t border-gray-200 pt-4">
-          <p className="mb-3 text-sm text-gray-500 text-center">
-            No hay campos pendientes de revisión.
-          </p>
-          <button
-            type="button"
-            onClick={onClose}
-            className="w-full rounded bg-blue-600 px-4 py-2 text-sm font-medium text-white hover:bg-blue-700"
-          >
-            Cerrar
-          </button>
-        </div>
-      )}
-    </div>
-  );
-}
