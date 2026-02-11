@@ -1,6 +1,7 @@
 'use client';
 
-import React, { Component, ErrorInfo, ReactNode } from 'react';
+import React, { Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
 import { ExclamationTriangleIcon, ArrowPathIcon } from '@heroicons/react/24/outline';
 import { captureException } from '@/lib/error-reporting';
 
@@ -120,5 +121,3 @@ export function withErrorBoundary<P extends object>(
 
   return ComponentWithBoundary;
 }
-
-export default ErrorBoundary;

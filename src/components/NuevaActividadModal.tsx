@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { 
+import {
   PlusIcon,
   XMarkIcon,
   PhoneIcon,
@@ -14,6 +14,7 @@ import {
   DocumentTextIcon,
   ClockIcon
 } from '@heroicons/react/24/outline';
+import { logger } from '@/lib/logger';
 
 interface NuevaActividadModalProps {
   clienteId: string;
@@ -85,7 +86,7 @@ export function NuevaActividadModal({
         setError(result.error || 'Error al crear la actividad');
       }
     } catch (error) {
-      console.error('Error:', error);
+      logger.error('Error creating activity', error instanceof Error ? error : new Error(String(error)));
       setError('Error de conexión');
     } finally {
       setIsLoading(false);
@@ -157,6 +158,7 @@ export function NuevaActividadModal({
                         onChange={(e) => handleInputChange('tipo', e.target.value)}
                         className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent"
                         required
+                        autoFocus
                       >
                         {TIPOS_ACTIVIDAD.map((tipo) => (
                           <option key={tipo.value} value={tipo.value}>

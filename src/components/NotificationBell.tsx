@@ -205,5 +205,3 @@ function getTimeAgo(date: Date): string {
   if (diffInSeconds < 604800) return `Hace ${Math.floor(diffInSeconds / 86400)} d`;
   return date.toLocaleDateString();
 }
-
-export default NotificationBell;

@@ -1,5 +1,8 @@
 'use client';
 
+import { useRouter } from 'next/navigation';
+import { PageJumpInput } from '@/components/ui/PageJumpInput';
+
 interface PaginationProps {
   currentPage: number;
   totalPages: number;
@@ -8,11 +11,17 @@ interface PaginationProps {
 }
 
 export function Pagination({ currentPage, totalPages, baseUrl, searchParams }: PaginationProps) {
+  const router = useRouter();
+
   if (totalPages <= 1) return null;
 
   const createPageUrl = (page: number) => {
     const params = new URLSearchParams({ ...searchParams, page: page.toString() });
     return `${baseUrl}?${params.toString()}`;
+  };
+
+  const handlePageJump = (page: number) => {
+    router.push(createPageUrl(page));
   };
 
   const getPageNumbers = () => {
@@ -48,10 +57,15 @@ export function Pagination({ currentPage, totalPages, baseUrl, searchParams }: P
 
   return (
     <div className="flex items-center justify-between px-6 py-4 border-t border-gray-200">
-      <div className="flex items-center text-sm text-gray-500">
+      <div className="flex items-center gap-4 text-sm text-gray-500">
         <span>
           Página {currentPage} de {totalPages}
         </span>
+        <PageJumpInput
+          currentPage={currentPage}
+          totalPages={totalPages}
+          onPageChange={handlePageJump}
+        />
       </div>
       
       <div className="flex items-center space-x-2">

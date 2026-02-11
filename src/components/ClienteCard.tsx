@@ -20,6 +20,7 @@ import {
   LinkedinLogo,
   TwitterLogo,
 } from '@phosphor-icons/react';
+import { getEstadoBadgeColor, getPrioridadBadgeColor } from '@/lib/badge-utils';
 
 interface Cliente {
   id: string;
@@ -52,37 +53,6 @@ interface ClienteCardProps {
   onDelete: (cliente: Cliente) => void;
 }
 
-function getBadgeColor(estado: string) {
-  switch (estado) {
-    case 'NUEVO':
-      return 'bg-blue-100 text-blue-800';
-    case 'PRIMER_CONTACTO':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'EN_TRATATIVAS':
-      return 'bg-orange-100 text-orange-800';
-    case 'EN_DESARROLLO':
-      return 'bg-green-100 text-green-800';
-    case 'FINALIZADO':
-      return 'bg-gray-100 text-gray-800';
-    case 'RECONTACTO':
-      return 'bg-purple-100 text-purple-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-function getPrioridadBadgeColor(prioridad: string) {
-  switch (prioridad) {
-    case 'CRITICA':
-      return 'bg-red-100 text-red-800';
-    case 'ALTA':
-      return 'bg-orange-100 text-orange-800';
-    case 'MEDIA':
-      return 'bg-yellow-100 text-yellow-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
 
 export const ClienteCard = React.memo(function ClienteCard({
   cliente,
@@ -118,9 +88,7 @@ export const ClienteCard = React.memo(function ClienteCard({
           )}
         </div>
         <span
-          className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${getBadgeColor(
-            cliente.estado
-          )}`}
+          className={`shrink-0 px-2 py-0.5 rounded-full text-xs font-medium ${getEstadoBadgeColor({ estado: cliente.estado })}`}
         >
           {cliente.estado}
         </span>
@@ -130,9 +98,7 @@ export const ClienteCard = React.memo(function ClienteCard({
       {cliente.prioridad && (
         <div className="mt-2">
           <span
-            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPrioridadBadgeColor(
-              cliente.prioridad
-            )}`}
+            className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${getPrioridadBadgeColor({ prioridad: cliente.prioridad })}`}
           >
             {cliente.prioridad}
           </span>

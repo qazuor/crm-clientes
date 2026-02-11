@@ -1,6 +1,7 @@
 import Link from 'next/link';
-import LogoutButton from '@/components/LogoutButton';
+import { LogoutButton } from '@/components/LogoutButton';
 import { NotificationBell } from '@/components/NotificationBell';
+import { MobileNav } from '@/components/MobileNav';
 import {
   BuildingOffice2Icon,
   PlusIcon,
@@ -9,15 +10,15 @@ import {
 import { Button } from '@/components/ui/Button';
 
 interface AuthenticatedLayoutProps {
-  children: React.ReactNode;
-  currentPath?: string;
-  userRole?: string;
+  readonly children: React.ReactNode;
+  readonly currentPath?: string;
+  /** Kept for future RBAC re-enablement */
+  readonly userRole?: string;
 }
 
-export default function AuthenticatedLayout({
+export function AuthenticatedLayout({
   children,
   currentPath = '/',
-  userRole: _userRole
 }: AuthenticatedLayoutProps) {
   const isActive = (path: string) => {
     if (path === '/' && currentPath === '/') return true;
@@ -32,9 +33,10 @@ export default function AuthenticatedLayout({
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
+              <MobileNav currentPath={currentPath} />
               <Link href="/" className="flex items-center">
                 <BuildingOffice2Icon className="h-8 w-8 text-blue-500 mr-3" />
-                <h1 className="text-xl font-bold text-gray-900">CRM Clientes</h1>
+                <h1 className="text-xl font-bold text-gray-900 hidden sm:block">CRM Clientes</h1>
               </Link>
               <nav className="hidden md:flex space-x-8">
                 <Link
@@ -83,8 +85,8 @@ export default function AuthenticatedLayout({
             <div className="flex items-center space-x-4">
               <Link href="/clientes/nuevo">
                 <Button>
-                  <PlusIcon className="h-4 w-4 mr-2" />
-                  Nuevo Cliente
+                  <PlusIcon className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Nuevo Cliente</span>
                 </Button>
               </Link>
               <NotificationBell />

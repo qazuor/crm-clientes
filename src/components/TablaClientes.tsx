@@ -1,343 +1,63 @@
 'use client';
 
-import React, { useState, useCallback, useMemo, useEffect } from 'react';
+import { useState, useCallback, useMemo, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import Link from 'next/link';
 import { Button } from '@/components/ui/Button';
 import { Modal, ModalFooter } from '@/components/ui/Modal';
-import { UltimaIADisplay } from '@/components/UltimaIADisplay';
 import { ColumnasSelect } from '@/components/ColumnasSelect';
 import { VistaSelector } from '@/components/VistaSelector';
 import { ClienteCard } from '@/components/ClienteCard';
-import { EnrichmentModal } from '@/components/enrichment/EnrichmentModal';
-import {
-  Eye,
-  PencilSimple,
-  CaretUp,
-  CaretDown,
-  Sparkle,
-  Globe,
-  MagnifyingGlass,
-  Trash,
-  Envelope,
-  WhatsappLogo,
-  InstagramLogo,
-  FacebookLogo,
-  LinkedinLogo,
-  TwitterLogo,
-} from '@phosphor-icons/react';
-import { ContactModal } from '@/components/ContactModal';
-import { BulkContactModal } from '@/components/BulkContactModal';
+import { ClienteRow } from '@/components/ClienteRow';
+import { ClienteTableHeader } from '@/components/ClienteTableHeader';
+import { BulkActionsBar } from '@/components/BulkActionsBar';
+import type { BulkAction } from '@/components/BulkActionsBar';
+import dynamic from 'next/dynamic';
 
-interface Cliente {
-  id: string;
-  nombre: string;
-  email: string | null;
-  telefono: string | null;
-  whatsapp?: string | null;
-  instagram?: string | null;
-  facebook?: string | null;
-  linkedin?: string | null;
-  twitter?: string | null;
-  direccion: string | null;
-  ciudad: string | null;
-  estado: string;
-  prioridad?: string;
-  industria: string | null;
-  sitioWeb: string | null;
-  ultimaIA: Date | null;
-  ultimoContacto?: Date | null;
-  fechaCreacion: Date;
-  fechaModific?: Date;
+const EnrichmentModal = dynamic(
+  () => import('@/components/enrichment/EnrichmentModal').then((m) => m.EnrichmentModal),
+  { ssr: false },
+);
+import { ContactModal } from '@/components/ContactModal';
+const BulkContactModal = dynamic(
+  () => import('@/components/BulkContactModal').then((m) => m.BulkContactModal),
+  { ssr: false },
+);
+
+export interface ClienteTableItem {
+  readonly id: string;
+  readonly nombre: string;
+  readonly email: string | null;
+  readonly telefono: string | null;
+  readonly whatsapp?: string | null;
+  readonly instagram?: string | null;
+  readonly facebook?: string | null;
+  readonly linkedin?: string | null;
+  readonly twitter?: string | null;
+  readonly direccion: string | null;
+  readonly ciudad: string | null;
+  readonly estado: string;
+  readonly prioridad?: string;
+  readonly industria: string | null;
+  readonly sitioWeb: string | null;
+  readonly ultimaIA: Date | null;
+  readonly ultimoContacto?: Date | null;
+  readonly fechaCreacion: Date;
+  readonly fechaModific?: Date;
 }
 
 interface TablaClientesProps {
-  clientes: Cliente[];
-  totalClientes: number;
-  params: Record<string, string>;
-  sortField: string;
-  sortOrder: string;
-  columnasIniciales?: string;
-  vistaInicial?: 'cards' | 'table';
+  readonly clientes: ClienteTableItem[];
+  readonly totalClientes: number;
+  readonly params: Record<string, string>;
+  readonly sortField: string;
+  readonly sortOrder: string;
+  readonly columnasIniciales?: string;
+  readonly vistaInicial?: 'cards' | 'table';
 }
 
 const COLUMNAS_DEFAULT = ['nombre', 'contacto', 'estado', 'industria', 'ultimaIA', 'acciones'];
-
-const ESTADOS = [
-  'NUEVO', 'PRIMER_CONTACTO', 'EN_TRATATIVAS', 'EN_DESARROLLO', 'FINALIZADO', 'RECONTACTO'
-];
-
+const ESTADOS = ['NUEVO', 'PRIMER_CONTACTO', 'EN_TRATATIVAS', 'EN_DESARROLLO', 'FINALIZADO', 'RECONTACTO'];
 const PRIORIDADES = ['BAJA', 'MEDIA', 'ALTA', 'CRITICA'];
-
-type BulkAction = 'delete' | 'changeEstado' | 'changePrioridad';
-
-function getBadgeColor(estado: string) {
-  switch (estado) {
-    case 'NUEVO':
-      return 'bg-blue-100 text-blue-800';
-    case 'PRIMER_CONTACTO':
-      return 'bg-yellow-100 text-yellow-800';
-    case 'EN_TRATATIVAS':
-      return 'bg-orange-100 text-orange-800';
-    case 'EN_DESARROLLO':
-      return 'bg-green-100 text-green-800';
-    case 'FINALIZADO':
-      return 'bg-gray-100 text-gray-800';
-    case 'RECONTACTO':
-      return 'bg-purple-100 text-purple-800';
-    default:
-      return 'bg-gray-100 text-gray-800';
-  }
-}
-
-interface ClienteRowProps {
-  cliente: Cliente;
-  isSelected: boolean;
-  columnasActivas: string[];
-  onToggleSelect: (id: string) => void;
-  onOpenEnrichmentModal: (cliente: Cliente) => void;
-  onOpenContactModal: (cliente: Cliente, tab: 'email' | 'whatsapp') => void;
-  onDelete: (cliente: Cliente) => void;
-}
-
-const ClienteRow = React.memo(function ClienteRow({
-  cliente,
-  isSelected,
-  columnasActivas,
-  onToggleSelect,
-  onOpenEnrichmentModal,
-  onOpenContactModal,
-  onDelete,
-}: ClienteRowProps) {
-  return (
-    <tr className={isSelected ? 'bg-blue-50' : 'hover:bg-gray-50'}>
-      <td className="px-0.5 py-2 text-center">
-        <input
-          type="checkbox"
-          checked={isSelected}
-          onChange={() => onToggleSelect(cliente.id)}
-          className="h-3.5 w-3.5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-        />
-      </td>
-      {columnasActivas.includes('nombre') && (
-        <td className="px-3 py-2">
-          <div className="overflow-hidden">
-            <Link href={`/clientes/${cliente.id}`} className="font-medium text-blue-600 hover:text-blue-800 hover:underline truncate block">
-              {cliente.nombre}
-            </Link>
-            {(cliente.direccion || cliente.ciudad) && (
-              <div className="text-gray-500 truncate">
-                {[cliente.direccion, cliente.ciudad].filter(Boolean).join(', ')}
-              </div>
-            )}
-          </div>
-        </td>
-      )}
-      {columnasActivas.includes('contacto') && (
-        <td className="px-3 py-2">
-          <div className="text-gray-900 overflow-hidden">
-            {cliente.email && (
-              <div className="truncate">
-                <a
-                  href={`mailto:${cliente.email}`}
-                  className="text-blue-600 hover:text-blue-800"
-                  title={cliente.email}
-                >
-                  {cliente.email}
-                </a>
-              </div>
-            )}
-            {cliente.telefono && (
-              <div className="truncate mt-1">
-                <a
-                  href={`tel:${cliente.telefono}`}
-                  className="text-blue-600 hover:text-blue-800"
-                  title={cliente.telefono}
-                >
-                  {cliente.telefono}
-                </a>
-              </div>
-            )}
-            {!cliente.email && !cliente.telefono && (
-              <span className="text-gray-400">Sin contacto</span>
-            )}
-          </div>
-        </td>
-      )}
-      {columnasActivas.includes('estado') && (
-        <td className="px-3 py-2">
-          <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${getBadgeColor(cliente.estado)}`}>
-            {cliente.estado}
-          </span>
-        </td>
-      )}
-      {columnasActivas.includes('prioridad') && (
-        <td className="px-3 py-2">
-          {cliente.prioridad && (
-            <span className={`inline-flex items-center px-1.5 py-0.5 rounded-full font-medium ${
-              cliente.prioridad === 'CRITICA' ? 'bg-red-100 text-red-800' :
-              cliente.prioridad === 'ALTA' ? 'bg-orange-100 text-orange-800' :
-              cliente.prioridad === 'MEDIA' ? 'bg-yellow-100 text-yellow-800' :
-              'bg-gray-100 text-gray-800'
-            }`}>
-              {cliente.prioridad}
-            </span>
-          )}
-          {!cliente.prioridad && (
-            <span className="text-gray-400">Sin prioridad</span>
-          )}
-        </td>
-      )}
-      {columnasActivas.includes('industria') && (
-        <td className="px-3 py-2">
-          <div className="text-gray-900 truncate" title={cliente.industria || 'Sin especificar'}>
-            {cliente.industria || (
-              <span className="text-gray-400">Sin especificar</span>
-            )}
-          </div>
-        </td>
-      )}
-      {columnasActivas.includes('ultimoContacto') && (
-        <td className="px-3 py-2">
-          <div className="text-gray-500 truncate">
-            {cliente.ultimoContacto ? (
-              <span title={new Date(cliente.ultimoContacto).toLocaleString('es-ES')}>
-                {new Date(cliente.ultimoContacto).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
-              </span>
-            ) : (
-              <span className="text-gray-400">Nunca</span>
-            )}
-          </div>
-        </td>
-      )}
-      {columnasActivas.includes('ultimaIA') && (
-        <td className="px-3 py-2">
-          <UltimaIADisplay fecha={cliente.ultimaIA} />
-        </td>
-      )}
-      {columnasActivas.includes('fechaCreacion') && (
-        <td className="px-3 py-2 text-gray-500 truncate">
-          {new Date(cliente.fechaCreacion).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })}
-        </td>
-      )}
-      {columnasActivas.includes('fechaModific') && (
-        <td className="px-3 py-2 text-gray-500 truncate">
-          {cliente.fechaModific ? (
-            new Date(cliente.fechaModific).toLocaleDateString('es-ES', { day: '2-digit', month: '2-digit' })
-          ) : (
-            <span className="text-gray-400">-</span>
-          )}
-        </td>
-      )}
-      {columnasActivas.includes('sitioWeb') && (
-        <td className="px-3 py-2">
-          {cliente.sitioWeb ? (
-            <a
-              href={cliente.sitioWeb.startsWith('http') ? cliente.sitioWeb : `https://${cliente.sitioWeb}`}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-blue-600 hover:text-blue-800 text-xs truncate block"
-              title={cliente.sitioWeb}
-            >
-              <Globe weight="duotone" className="h-4 w-4 text-indigo-500" />
-            </a>
-          ) : (
-            <span className="text-gray-400 text-xs">-</span>
-          )}
-        </td>
-      )}
-      {columnasActivas.includes('redesSociales') && (
-        <td className="px-3 py-2">
-          <div className="flex items-center gap-1">
-            {cliente.whatsapp && <span title="WhatsApp"><WhatsappLogo weight="duotone" className="h-4 w-4 text-green-600" /></span>}
-            {cliente.instagram && <span title="Instagram"><InstagramLogo weight="duotone" className="h-4 w-4 text-pink-600" /></span>}
-            {cliente.facebook && <span title="Facebook"><FacebookLogo weight="duotone" className="h-4 w-4 text-blue-600" /></span>}
-            {cliente.linkedin && <span title="LinkedIn"><LinkedinLogo weight="duotone" className="h-4 w-4 text-blue-700" /></span>}
-            {cliente.twitter && <span title="Twitter"><TwitterLogo weight="duotone" className="h-4 w-4 text-blue-400" /></span>}
-            {!cliente.whatsapp && !cliente.instagram && !cliente.facebook && !cliente.linkedin && !cliente.twitter && (
-              <span className="text-gray-400 text-xs">-</span>
-            )}
-          </div>
-        </td>
-      )}
-      {columnasActivas.includes('acciones') && (
-        <td className="px-2 py-2">
-          <div className="flex items-center flex-wrap gap-0.5">
-            <Link href={`/clientes/${cliente.id}`}>
-              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-sky-50 border-sky-300 hover:bg-sky-100 hover:border-sky-400" title="Ver cliente">
-                <Eye weight="duotone" className="h-3.5 w-3.5 text-sky-700" />
-              </Button>
-            </Link>
-            <Link href={`/clientes/${cliente.id}/editar`}>
-              <Button variant="outline" size="sm" className="h-6 w-6 p-0 bg-amber-50 border-amber-300 hover:bg-amber-100 hover:border-amber-400" title="Editar cliente">
-                <PencilSimple weight="duotone" className="h-3.5 w-3.5 text-amber-700" />
-              </Button>
-            </Link>
-            <Button
-              onClick={() => onOpenContactModal(cliente, 'email')}
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0 bg-blue-50 border-blue-300 hover:bg-blue-100 hover:border-blue-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
-              title={cliente.email ? 'Enviar email con plantilla' : 'Sin email'}
-              disabled={!cliente.email}
-            >
-              <Envelope weight="duotone" className="h-3.5 w-3.5 text-blue-600" />
-            </Button>
-            <Button
-              onClick={() => onOpenContactModal(cliente, 'whatsapp')}
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0 bg-green-50 border-green-300 hover:bg-green-100 hover:border-green-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
-              title={cliente.whatsapp ? 'Enviar WhatsApp con plantilla' : 'Sin WhatsApp'}
-              disabled={!cliente.whatsapp}
-            >
-              <WhatsappLogo weight="duotone" className="h-3.5 w-3.5 text-green-600" />
-            </Button>
-            <Button
-              onClick={() => onOpenEnrichmentModal(cliente)}
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0 bg-purple-50 border-purple-300 hover:bg-purple-100 hover:border-purple-400"
-              title="Buscar información con IA (OpenAI)"
-            >
-              <Sparkle weight="duotone" className="h-3.5 w-3.5 text-purple-600" />
-            </Button>
-            <Link href={`/clientes/${cliente.id}#enrichment`}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 w-6 p-0 bg-indigo-50 border-indigo-300 hover:bg-indigo-100 hover:border-indigo-400"
-                title="Ver página de búsqueda detallada"
-              >
-                <MagnifyingGlass weight="duotone" className="h-3.5 w-3.5 text-indigo-600" />
-              </Button>
-            </Link>
-            <Link href={`/clientes/${cliente.id}#web-analysis`} className={!cliente.sitioWeb ? 'pointer-events-none' : ''}>
-              <Button
-                variant="outline"
-                size="sm"
-                className="h-6 w-6 p-0 bg-emerald-50 border-emerald-300 hover:bg-emerald-100 hover:border-emerald-400 disabled:bg-gray-50 disabled:border-gray-200 disabled:grayscale disabled:opacity-50 disabled:cursor-not-allowed"
-                title={cliente.sitioWeb ? 'Analizar sitio web (capturas, PageSpeed, etc.)' : 'Sin sitio web'}
-                disabled={!cliente.sitioWeb}
-              >
-                <Globe weight="duotone" className="h-3.5 w-3.5 text-emerald-600" />
-              </Button>
-            </Link>
-            <Button
-              onClick={() => onDelete(cliente)}
-              variant="outline"
-              size="sm"
-              className="h-6 w-6 p-0 bg-red-50 border-red-300 hover:bg-red-100 hover:border-red-400"
-              title="Eliminar cliente"
-            >
-              <Trash weight="duotone" className="h-3.5 w-3.5 text-red-600" />
-            </Button>
-          </div>
-        </td>
-      )}
-    </tr>
-  );
-});
 
 export function TablaClientes({
   clientes,
@@ -389,13 +109,13 @@ export function TablaClientes({
 
   // Estados para el modal de enriquecimiento IA (individual + bulk)
   const [isEnrichmentModalOpen, setIsEnrichmentModalOpen] = useState(false);
-  const [selectedCliente, setSelectedCliente] = useState<Cliente | null>(null);
+  const [selectedCliente, setSelectedCliente] = useState<ClienteTableItem | null>(null);
   const [bulkEnrichIds, setBulkEnrichIds] = useState<string[]>([]);
   const [bulkEnrichNames, setBulkEnrichNames] = useState<string[]>([]);
 
   // Estados para el modal de contacto
   const [isContactModalOpen, setIsContactModalOpen] = useState(false);
-  const [contactCliente, setContactCliente] = useState<Cliente | null>(null);
+  const [contactCliente, setContactCliente] = useState<ClienteTableItem | null>(null);
   const [contactDefaultTab, setContactDefaultTab] = useState<'email' | 'whatsapp'>('email');
 
   // Estados para acciones masivas
@@ -422,7 +142,7 @@ export function TablaClientes({
     router.push(`/clientes?${currentParams.toString()}`, { scroll: false });
   }, [router]);
 
-  const openEnrichmentModal = useCallback((cliente: Cliente) => {
+  const openEnrichmentModal = useCallback((cliente: ClienteTableItem) => {
     setSelectedCliente(cliente);
     setIsEnrichmentModalOpen(true);
   }, []);
@@ -444,7 +164,7 @@ export function TablaClientes({
     setIsEnrichmentModalOpen(true);
   }, [selectedIds, clientes]);
 
-  const openContactModal = useCallback((cliente: Cliente, tab: 'email' | 'whatsapp') => {
+  const openContactModal = useCallback((cliente: ClienteTableItem, tab: 'email' | 'whatsapp') => {
     setContactCliente(cliente);
     setContactDefaultTab(tab);
     setIsContactModalOpen(true);
@@ -459,7 +179,7 @@ export function TablaClientes({
     router.refresh();
   }, [router]);
 
-  const handleDelete = useCallback(async (cliente: Cliente) => {
+  const handleDelete = useCallback(async (cliente: ClienteTableItem) => {
     if (!confirm(`¿Estás seguro de que deseas eliminar a "${cliente.nombre}"? Esta acción no se puede deshacer.`)) {
       return;
     }
@@ -592,58 +312,15 @@ export function TablaClientes({
 
       {/* Barra de acciones masivas */}
       {selectedIds.size > 0 && (
-        <div className="flex items-center gap-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-          <span className="text-sm font-medium text-blue-800">
-            {selectedIds.size} cliente(s) seleccionado(s)
-          </span>
-          <div className="flex items-center gap-2 ml-auto">
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={openBulkEnrichModal}
-            >
-              <Sparkle weight="duotone" className="h-4 w-4 mr-1" />
-              Enriquecer
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => setShowBulkContactModal(true)}
-            >
-              <Envelope weight="duotone" className="h-4 w-4 mr-1" />
-              Contactar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openBulkModal('changeEstado')}
-            >
-              Cambiar Estado
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => openBulkModal('changePrioridad')}
-            >
-              Cambiar Prioridad
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              className="text-red-600 border-red-300 hover:bg-red-50"
-              onClick={() => openBulkModal('delete')}
-            >
-              Eliminar
-            </Button>
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={clearSelection}
-            >
-              Deseleccionar
-            </Button>
-          </div>
-        </div>
+        <BulkActionsBar
+          selectedCount={selectedIds.size}
+          onEnrich={openBulkEnrichModal}
+          onContact={() => setShowBulkContactModal(true)}
+          onChangeEstado={() => openBulkModal('changeEstado')}
+          onChangePrioridad={() => openBulkModal('changePrioridad')}
+          onDelete={() => openBulkModal('delete')}
+          onClearSelection={clearSelection}
+        />
       )}
 
       {/* Vista de Cards o Tabla */}
@@ -677,180 +354,15 @@ export function TablaClientes({
       ) : (
         <div className="w-full">
           <div className="shadow ring-1 ring-black ring-opacity-5 md:rounded-lg">
-            <table className="w-full table-fixed divide-y divide-gray-200">
-              <thead className="bg-gray-50">
-                <tr>
-                  {/* Checkbox header */}
-                  <th className="px-0.5 py-3 text-center" style={{width: '2%'}}>
-                    <input
-                      type="checkbox"
-                      checked={allPageSelected}
-                      onChange={toggleSelectAll}
-                      className="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                    />
-                  </th>
-                  {columnasActivas.includes('nombre') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '12%'}}>
-                      <Link
-                        href={createSortUrl('nombre')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Cliente</span>
-                        {sortField === 'nombre' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('contacto') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '14%'}}>
-                      <Link
-                        href={createSortUrl('email')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Contacto</span>
-                        {sortField === 'email' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('estado') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('estado')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Estado</span>
-                        {sortField === 'estado' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('prioridad') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('prioridad')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Prioridad</span>
-                        {sortField === 'prioridad' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('industria') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '8%'}}>
-                      <Link
-                        href={createSortUrl('industria')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Industria</span>
-                        {sortField === 'industria' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('ultimoContacto') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '8%'}}>
-                      <Link
-                        href={createSortUrl('ultimoContacto')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Últ. Contacto</span>
-                        {sortField === 'ultimoContacto' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('ultimaIA') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('ultimaIA')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Últ. IA</span>
-                        {sortField === 'ultimaIA' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('fechaCreacion') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('fechaCreacion')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Creada</span>
-                        {sortField === 'fechaCreacion' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('fechaModific') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('fechaModific')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Modificada</span>
-                        {sortField === 'fechaModific' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('sitioWeb') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '7%'}}>
-                      <Link
-                        href={createSortUrl('sitioWeb')}
-                        className="flex items-center space-x-1 hover:text-gray-700"
-                      >
-                        <span>Web</span>
-                        {sortField === 'sitioWeb' && (
-                          sortOrder === 'asc' ?
-                          <CaretUp weight="duotone" className="h-4 w-4" /> :
-                          <CaretDown weight="duotone" className="h-4 w-4" />
-                        )}
-                      </Link>
-                    </th>
-                  )}
-                  {columnasActivas.includes('redesSociales') && (
-                    <th className="px-3 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '6%'}}>
-                      <span>Redes</span>
-                    </th>
-                  )}
-                  {columnasActivas.includes('acciones') && (
-                    <th className="px-2 py-3 text-left text-xs font-medium text-gray-500 uppercase tracking-wider" style={{width: '14%'}}>
-                      Acciones
-                    </th>
-                  )}
-                </tr>
-              </thead>
+            <table className="w-full table-fixed divide-y divide-gray-200" role="grid" aria-label="Client list table">
+              <ClienteTableHeader
+                columnasActivas={columnasActivas}
+                allPageSelected={allPageSelected}
+                sortField={sortField}
+                sortOrder={sortOrder}
+                onToggleSelectAll={toggleSelectAll}
+                createSortUrl={createSortUrl}
+              />
               <tbody className="bg-white divide-y divide-gray-200 text-xs">
                 {clientes.length === 0 ? (
                   <tr>

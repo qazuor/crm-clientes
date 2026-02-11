@@ -2,13 +2,15 @@
 
 import { useState } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import { Button } from '@/components/ui/Button';
-import { 
+import { FilterBadge, FilterBadgeGroup } from '@/components/ui/FilterBadge';
+import { DatePicker } from '@/components/ui/DatePicker';
+import {
   FunnelIcon,
-  CalendarIcon,
   ChevronDownIcon,
   ChevronUpIcon,
-  MagnifyingGlassIcon 
+  MagnifyingGlassIcon
 } from '@heroicons/react/24/outline';
 
 interface FiltrosAvanzadosProps {
@@ -48,9 +50,51 @@ export function FiltrosAvanzados({
   mostrarFiltros,
   columnas
 }: FiltrosAvanzadosProps) {
+  const router = useRouter();
   const [filtrosAbiertos, setFiltrosAbiertos] = useState(mostrarFiltros === 'true');
 
+  /** Parse ISO date string to Date object */
+  const parseDate = (dateStr: string): Date | undefined => {
+    if (!dateStr) return undefined;
+    const parsed = new Date(dateStr + 'T00:00:00');
+    return isNaN(parsed.getTime()) ? undefined : parsed;
+  };
+
+  /** Format Date to ISO date string (YYYY-MM-DD) */
+  const formatDate = (date: Date | undefined): string => {
+    if (!date) return '';
+    return date.toISOString().split('T')[0];
+  };
+
+  const [desdeDate, setDesdeDate] = useState<Date | undefined>(() => parseDate(fechaDesde));
+  const [hastaDate, setHastaDate] = useState<Date | undefined>(() => parseDate(fechaHasta));
+
   const hayFiltrosActivos = search || estado || industria || ciudad || fechaDesde || fechaHasta || conIA || conEmail || conTelefono || conSitioWeb;
+
+  /** Build active filter entries for badges */
+  const activeFilters: Array<{ key: string; label: string; value: string }> = [];
+  if (search) activeFilters.push({ key: 'search', label: 'Buscar', value: search });
+  if (estado) activeFilters.push({ key: 'estado', label: 'Estado', value: estado.replace(/_/g, ' ') });
+  if (industria) activeFilters.push({ key: 'industria', label: 'Industria', value: industria });
+  if (ciudad) activeFilters.push({ key: 'ciudad', label: 'Ciudad', value: ciudad });
+  if (fechaDesde) activeFilters.push({ key: 'fechaDesde', label: 'Desde', value: fechaDesde });
+  if (fechaHasta) activeFilters.push({ key: 'fechaHasta', label: 'Hasta', value: fechaHasta });
+  if (conIA) activeFilters.push({ key: 'conIA', label: 'IA', value: conIA === 'si' ? 'Con IA' : 'Sin IA' });
+  if (conEmail) activeFilters.push({ key: 'conEmail', label: 'Email', value: conEmail === 'si' ? 'Con Email' : 'Sin Email' });
+  if (conTelefono) activeFilters.push({ key: 'conTelefono', label: 'Tel', value: conTelefono === 'si' ? 'Con Tel' : 'Sin Tel' });
+  if (conSitioWeb) activeFilters.push({ key: 'conSitioWeb', label: 'Web', value: conSitioWeb === 'si' ? 'Con Web' : 'Sin Web' });
+
+  /** Remove a single filter and navigate */
+  const removeFilter = (key: string) => {
+    const url = new URL(window.location.href);
+    url.searchParams.delete(key);
+    router.push(url.pathname + url.search);
+  };
+
+  /** Remove all filters */
+  const clearAllFilters = () => {
+    router.push('/clientes');
+  };
 
   const selectClassName = `w-full px-3 py-2 pr-8 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-gray-900 appearance-none`;
   
@@ -80,6 +124,7 @@ export function FiltrosAvanzados({
               placeholder="Buscar por nombre, email, teléfono, industria, dirección..."
               defaultValue={search}
               className="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-gray-900 placeholder-gray-500"
+              autoFocus
             />
           </div>
           
@@ -119,7 +164,21 @@ export function FiltrosAvanzados({
             </Link>
           )}
         </div>
-        
+
+        {/* Active filter badges */}
+        {activeFilters.length > 0 && (
+          <FilterBadgeGroup count={activeFilters.length} onClearAll={clearAllFilters}>
+            {activeFilters.map((f) => (
+              <FilterBadge
+                key={f.key}
+                label={f.label}
+                value={f.value}
+                onRemove={() => removeFilter(f.key)}
+              />
+            ))}
+          </FilterBadgeGroup>
+        )}
+
         {/* Filtros detallados (colapsables) */}
         {filtrosAbiertos && (
           <>
@@ -188,31 +247,31 @@ export function FiltrosAvanzados({
 
               {/* Fecha desde */}
               <div>
-                <label htmlFor="fechaDesde" className="block text-xs font-semibold text-gray-700 mb-1">
-                  <CalendarIcon className="h-3 w-3 inline mr-1" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Desde
                 </label>
-                <input
-                  id="fechaDesde"
-                  type="date"
-                  name="fechaDesde"
-                  defaultValue={fechaDesde}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-gray-900"
+                <input type="hidden" name="fechaDesde" value={formatDate(desdeDate)} />
+                <DatePicker
+                  value={desdeDate}
+                  onChange={setDesdeDate}
+                  placeholder="Desde"
+                  maxDate={hastaDate}
+                  label="Fecha desde"
                 />
               </div>
 
               {/* Fecha hasta */}
               <div>
-                <label htmlFor="fechaHasta" className="block text-xs font-semibold text-gray-700 mb-1">
-                  <CalendarIcon className="h-3 w-3 inline mr-1" />
+                <label className="block text-xs font-semibold text-gray-700 mb-1">
                   Hasta
                 </label>
-                <input
-                  id="fechaHasta"
-                  type="date"
-                  name="fechaHasta"
-                  defaultValue={fechaHasta}
-                  className="w-full px-3 py-2 border border-gray-300 rounded-md focus:ring-2 focus:ring-blue-500 focus:border-transparent text-sm bg-white text-gray-900"
+                <input type="hidden" name="fechaHasta" value={formatDate(hastaDate)} />
+                <DatePicker
+                  value={hastaDate}
+                  onChange={setHastaDate}
+                  placeholder="Hasta"
+                  minDate={desdeDate}
+                  label="Fecha hasta"
                 />
               </div>
 
