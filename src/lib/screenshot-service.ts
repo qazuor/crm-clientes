@@ -103,5 +103,3 @@ export class ScreenshotService {
     return getBlobUrl(pathname);
   }
 }
-
-export default ScreenshotService;

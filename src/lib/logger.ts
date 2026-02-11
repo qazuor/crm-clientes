@@ -59,4 +59,4 @@ export const logger = {
   }
 };
 
-export default logger;
+export type { LogLevel };

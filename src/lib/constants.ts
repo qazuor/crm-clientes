@@ -33,3 +33,10 @@ export const CLEANUP = {
   /** Days to retain read notifications before cron cleanup */
   NOTIFICATION_RETENTION_DAYS: 30,
 } as const;
+
+export const TIMEOUTS = {
+  /** Timeout for AI enrichment operations (2 minutes) */
+  AI_OPERATION_MS: 120_000,
+  /** Timeout for website analysis operations (30 seconds) */
+  WEBSITE_ANALYSIS_MS: 30_000,
+} as const;

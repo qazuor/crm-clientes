@@ -1,15 +1,29 @@
-// Error reporting abstraction - swap implementation when Sentry is configured
-export function captureException(error: Error, context?: Record<string, unknown>) {
-  // TODO: Replace with Sentry.captureException(error, { extra: context })
-  if (process.env.NODE_ENV === 'production') {
-    // In production, errors should go to error tracking service
-    console.error('[ErrorReport]', error.message, context);
-  }
+import { logger } from '@/lib/logger';
+
+/**
+ * Reports an error with optional context for structured logging.
+ * Uses the centralized logger in all environments.
+ */
+export function captureException(error: Error, context?: Record<string, unknown>): void {
+  logger.error(error.message, error, context);
 }
 
-export function captureMessage(message: string, level: 'info' | 'warning' | 'error' = 'info') {
-  // TODO: Replace with Sentry.captureMessage(message, level)
-  if (process.env.NODE_ENV === 'production') {
-    console.log(`[ErrorReport:${level}]`, message);
+/**
+ * Reports a message at a given severity level.
+ * Uses the centralized logger in all environments.
+ */
+export function captureMessage(
+  message: string,
+  level: 'info' | 'warning' | 'error' = 'info'
+): void {
+  const levelMap = { info: 'info', warning: 'warn', error: 'error' } as const;
+  const logLevel = levelMap[level];
+
+  if (logLevel === 'error') {
+    logger.error(message);
+  } else if (logLevel === 'warn') {
+    logger.warn(message);
+  } else {
+    logger.info(message);
   }
 }

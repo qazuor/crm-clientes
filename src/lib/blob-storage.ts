@@ -107,17 +107,19 @@ async function uploadToVercelBlob(
     });
 
     // Track in database
-    await prisma.blobFile.create({
-      data: {
-        url: blob.url,
-        pathname: blob.pathname,
-        clienteId: options?.clienteId,
-        type: options?.type || 'other',
-        size: data.length
-      }
-    }).catch(err => {
-      logger.warn('Failed to track blob in database', { error: err.message });
-    });
+    try {
+      await prisma.blobFile.create({
+        data: {
+          url: blob.url,
+          pathname: blob.pathname,
+          clienteId: options?.clienteId,
+          type: options?.type || 'other',
+          size: data.length
+        }
+      });
+    } catch (err) {
+      logger.warn('Failed to track blob in database', { error: err instanceof Error ? err.message : String(err) });
+    }
 
     logger.info('Blob uploaded to Vercel', { pathname: blob.pathname, size: data.length });
 
@@ -139,11 +141,13 @@ async function deleteFromVercelBlob(url: string): Promise<BlobDeleteResult> {
     await del(url);
 
     // Remove from database tracking
-    await prisma.blobFile.delete({
-      where: { url }
-    }).catch(() => {
+    try {
+      await prisma.blobFile.delete({
+        where: { url }
+      });
+    } catch {
       // Ignore if not found in DB
-    });
+    }
 
     logger.info('Blob deleted from Vercel', { url });
 
@@ -192,17 +196,19 @@ async function uploadToLocalFilesystem(
   const url = `/screenshots/${cleanPathname}`;
 
   // Track in database (optional for local dev)
-  await prisma.blobFile.create({
-    data: {
-      url,
-      pathname: cleanPathname,
-      clienteId: options?.clienteId,
-      type: options?.type || 'other',
-      size: stats.size
-    }
-  }).catch(() => {
+  try {
+    await prisma.blobFile.create({
+      data: {
+        url,
+        pathname: cleanPathname,
+        clienteId: options?.clienteId,
+        type: options?.type || 'other',
+        size: stats.size
+      }
+    });
+  } catch {
     // Ignore DB errors in local dev
-  });
+  }
 
   logger.info('Blob saved locally', { pathname: cleanPathname, size: stats.size });
 
@@ -228,11 +234,13 @@ async function deleteFromLocalFilesystem(url: string): Promise<BlobDeleteResult>
     await fs.promises.unlink(filePath);
 
     // Remove from database
-    await prisma.blobFile.delete({
-      where: { url }
-    }).catch(() => {
+    try {
+      await prisma.blobFile.delete({
+        where: { url }
+      });
+    } catch {
       // Ignore if not found
-    });
+    }
 
     logger.info('Blob deleted locally', { pathname });
 

@@ -128,3 +128,84 @@ export function apiRateLimit(identifier: string): RateLimitResult {
   const API_WINDOW_MS = 60 * 1000; // 1 minute
   return rateLimit(identifier, API_LIMIT, API_WINDOW_MS);
 }
+
+/**
+ * Pre-configured rate limiter for AI enrichment endpoints.
+ * 10 requests per minute per IP.
+ */
+export function enrichmentRateLimit(identifier: string): RateLimitResult {
+  const ENRICHMENT_LIMIT = 10;
+  const ENRICHMENT_WINDOW_MS = 60 * 1000; // 1 minute
+  return rateLimit(identifier, ENRICHMENT_LIMIT, ENRICHMENT_WINDOW_MS);
+}
+
+/**
+ * Pre-configured rate limiter for bulk enrichment endpoints.
+ * 3 requests per 5 minutes per IP.
+ */
+export function bulkEnrichmentRateLimit(identifier: string): RateLimitResult {
+  const BULK_LIMIT = 3;
+  const BULK_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+  return rateLimit(identifier, BULK_LIMIT, BULK_WINDOW_MS);
+}
+
+/**
+ * Pre-configured rate limiter for messaging endpoints.
+ * 20 requests per minute per IP.
+ */
+export function messagingRateLimit(identifier: string): RateLimitResult {
+  const MSG_LIMIT = 20;
+  const MSG_WINDOW_MS = 60 * 1000; // 1 minute
+  return rateLimit(identifier, MSG_LIMIT, MSG_WINDOW_MS);
+}
+
+/**
+ * Pre-configured rate limiter for bulk messaging endpoints.
+ * 5 requests per 5 minutes per IP.
+ */
+export function bulkMessagingRateLimit(identifier: string): RateLimitResult {
+  const BULK_MSG_LIMIT = 5;
+  const BULK_MSG_WINDOW_MS = 5 * 60 * 1000; // 5 minutes
+  return rateLimit(identifier, BULK_MSG_LIMIT, BULK_MSG_WINDOW_MS);
+}
+
+/**
+ * Pre-configured rate limiter for admin endpoints.
+ * 30 requests per minute per IP.
+ */
+export function adminRateLimit(identifier: string): RateLimitResult {
+  const ADMIN_LIMIT = 30;
+  const ADMIN_WINDOW_MS = 60 * 1000; // 1 minute
+  return rateLimit(identifier, ADMIN_LIMIT, ADMIN_WINDOW_MS);
+}
+
+/**
+ * Extract client IP from request headers.
+ * Falls back to 'unknown' if no IP can be determined.
+ */
+export function getClientIp(request: Request): string {
+  const forwarded = request.headers.get('x-forwarded-for');
+  if (forwarded) {
+    return forwarded.split(',')[0].trim();
+  }
+  const realIp = request.headers.get('x-real-ip');
+  if (realIp) {
+    return realIp;
+  }
+  return 'unknown';
+}
+
+/**
+ * Create a standard 429 Too Many Requests response.
+ */
+export function rateLimitResponse({ reset }: { reset: number }): Response {
+  return Response.json(
+    { error: 'Too many requests. Please try again later.' },
+    {
+      status: 429,
+      headers: {
+        'Retry-After': String(Math.ceil((reset - Date.now()) / 1000)),
+      },
+    },
+  );
+}
