@@ -87,6 +87,77 @@ pnpm test:coverage    # Run tests with coverage report
 - Prisma schema at `prisma/schema.prisma`
 - Seed scripts at `prisma/seed.ts`, `prisma/seed-restore.ts`, `prisma/seed-plantillas.ts`
 
+#### Migrations (Local)
+
+```bash
+pnpm db:migrate             # prisma migrate dev (generates + applies migration)
+pnpm db:push                # prisma db push (direct sync, no migration file)
+```
+
+If `migrate dev` fails with shadow DB errors (P3006), create migrations manually:
+
+```bash
+# Generate diff SQL from live DB vs schema
+npx prisma migrate diff --from-schema-datasource prisma/schema.prisma \
+  --to-schema-datamodel prisma/schema.prisma --script
+
+# Create migration dir and write SQL
+mkdir -p prisma/migrations/YYYYMMDDHHMMSS_description/
+# Write SQL to migration.sql in that directory
+
+# Apply without shadow DB
+npx prisma migrate deploy
+```
+
+If DB already has changes applied via `db push` but migration is not recorded:
+
+```bash
+npx prisma migrate resolve --applied MIGRATION_NAME
+```
+
+#### Migrations (Production)
+
+```bash
+pnpm db:migrate:prod        # prisma migrate deploy
+```
+
+Migrations are NOT automatic in Vercel. Run manually with production credentials:
+
+```bash
+# Option 1: Inline env vars
+DATABASE_URL="<pooled-url>" DIRECT_URL="<direct-url>" npx prisma migrate deploy
+
+# Option 2: Pull env vars from Vercel first
+vercel env pull .env.production.local
+npx dotenv -e .env.production.local -- prisma migrate deploy
+```
+
+Always use `DIRECT_URL` (direct connection) for migrations. Pooled connections can timeout during DDL.
+
+## Deployment
+
+- **Hosting**: Vercel (Git integration, push to `main` triggers deploy)
+- **Region**: `iad1` (US East)
+- **Build**: `prisma generate && next build` (see `vercel.json`)
+- **API timeout**: 60s for all routes
+- **Cron**: Daily cleanup at 2 AM UTC (`/api/cron/cleanup`)
+
+### Env Vars (Vercel Dashboard)
+
+Required: `DATABASE_URL` (pooled), `DIRECT_URL` (direct), `BETTER_AUTH_SECRET` (min 32 chars)
+
+Optional: `BETTER_AUTH_URL`, `BLOB_READ_WRITE_TOKEN`, `CRON_SECRET`, `RESEND_API_KEY`
+
+### CI/CD
+
+GitHub Actions (`.github/workflows/ci.yml`): lint + typecheck on push/PR to `main`. No auto-deploy, no tests.
+
+### First-time Setup
+
+```bash
+npx tsx scripts/create-admin.ts   # Create admin user
+```
+
 ## Coding Standards
 
 - TypeScript strict mode, no `any` types
