@@ -1,0 +1,13 @@
+{
+  "version": "1.0",
+  "specs": [
+    {
+      "specId": "SPEC-001",
+      "title": "CRM Quality & UX Improvements",
+      "status": "approved",
+      "complexity": "high",
+      "path": "SPEC-001-crm-quality-ux-improvements",
+      "created": "2026-02-07T17:30:00-03:00"
+    }
+  ]
+}

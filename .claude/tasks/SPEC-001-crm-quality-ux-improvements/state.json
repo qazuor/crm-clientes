@@ -1,0 +1,2093 @@
+{
+  "version": "1.0",
+  "specRef": "SPEC-001",
+  "title": "CRM Quality & UX Improvements",
+  "created": "2026-02-07T17:45:00-03:00",
+  "tasks": [
+    {
+      "id": "T-001",
+      "title": "Delete 7 empty directories",
+      "description": "Remove empty directories left over from refactoring: src/utils, src/stores, src/components/forms, src/components/layout, src/components/tables, src/app/api/enrichment, src/app/admin/settings/bulk-enrich. Verify each is truly empty before deleting.",
+      "status": "completed",
+      "complexity": 1,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Verify and delete src/utils",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/stores",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/components/forms",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/components/layout",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/components/tables",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/app/api/enrichment",
+          "completed": true
+        },
+        {
+          "title": "Verify and delete src/app/admin/settings/bulk-enrich",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "structure"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:50:00-03:00",
+        "completed": "2026-02-07T17:50:00-03:00"
+      }
+    },
+    {
+      "id": "T-002",
+      "title": "Remove test page from production",
+      "description": "Delete src/app/test/page.tsx which should not be deployed to production. Verify no other files import or reference it.",
+      "status": "completed",
+      "complexity": 1,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "cleanup"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:51:00-03:00",
+        "completed": "2026-02-07T17:51:00-03:00"
+      }
+    },
+    {
+      "id": "T-003",
+      "title": "Improve logger and remove Sentry TODOs",
+      "description": "Improve src/lib/error-reporting.ts: remove the 2 TODO comments about Sentry, improve the existing logger with structured logging (add context objects, log levels). Keep using console-based output but make the API richer. Update src/lib/logger.ts if needed to support structured context.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-004"
+      ],
+      "subtasks": [
+        {
+          "title": "Remove Sentry TODOs from error-reporting.ts",
+          "completed": true
+        },
+        {
+          "title": "Add structured context support to logger",
+          "completed": true
+        },
+        {
+          "title": "Ensure logger exports are typed and documented",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "logging"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:54:00-03:00",
+        "completed": "2026-02-07T17:55:00-03:00"
+      }
+    },
+    {
+      "id": "T-004",
+      "title": "Replace console.log with centralized logger in components",
+      "description": "Replace 8 console.log/console.error instances in production components with the centralized logger from src/lib/logger.ts. Files: EnrichmentSettingsForm.tsx:88,97, ApiKeyList.tsx:88, NuevaActividadModal.tsx:88, QuotaStatus.tsx:44,60, EnrichmentModal.tsx:311, CopyButton.tsx:20, EditarClienteForm.tsx:101.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-003"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Replace in EnrichmentSettingsForm.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in ApiKeyList.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in NuevaActividadModal.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in QuotaStatus.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in EnrichmentModal.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in CopyButton.tsx",
+          "completed": true
+        },
+        {
+          "title": "Replace in EditarClienteForm.tsx",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "cleanup",
+        "logging"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:56:00-03:00",
+        "completed": "2026-02-07T17:58:00-03:00"
+      }
+    },
+    {
+      "id": "T-005",
+      "title": "Convert .then() chains to async/await",
+      "description": "Convert 5 files from .then() chains to async/await pattern: src/lib/services/external-apis/thumio-service.ts, src/app/clientes/[id]/page.tsx, src/lib/pagespeed-service.ts, src/lib/services/website-analysis-service.ts, src/lib/blob-storage.ts. Maintain identical behavior.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "cleanup",
+        "code-standards"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:40:00-03:00",
+        "completed": "2026-02-08T14:42:00-03:00"
+      }
+    },
+    {
+      "id": "T-006",
+      "title": "Fix import type across all files",
+      "description": "Audit all ~139 TypeScript files and convert type-only imports to use 'import type' syntax. Only ~27 files currently use it correctly. Focus on imports from src/types/, Prisma client types, and component prop types. This reduces bundle size by eliminating type-only imports from runtime.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "cleanup",
+        "code-standards",
+        "performance"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-007",
+      "title": "Convert avoidable default exports to named exports",
+      "description": "Convert ~11 files that use default exports unnecessarily (not required by Next.js) to named exports. Files required by Next.js (page.tsx, layout.tsx) keep default exports. Identify all default exports, determine which are Next.js-required, convert the rest.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-008"
+      ],
+      "subtasks": [],
+      "tags": [
+        "cleanup",
+        "code-standards"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:43:00-03:00",
+        "completed": "2026-02-08T14:43:00-03:00"
+      }
+    },
+    {
+      "id": "T-008",
+      "title": "Update CLAUDE.md with Next.js default export exception",
+      "description": "Add a note to the project CLAUDE.md under Coding Standards documenting that Next.js App Router files (page.tsx, layout.tsx, loading.tsx, error.tsx, not-found.tsx) are excepted from the 'named exports only' rule because the framework requires default exports.",
+      "status": "completed",
+      "complexity": 1,
+      "blockedBy": [
+        "T-007"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "cleanup",
+        "docs"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T18:00:00-03:00",
+        "completed": "2026-02-07T18:01:00-03:00"
+      }
+    },
+    {
+      "id": "T-009",
+      "title": "Fix email validation in cliente schema",
+      "description": "Fix src/lib/validations/cliente.ts email field: add .trim().toLowerCase() transforms, handle empty string by transforming to null. Current: z.string().email().max(255).optional().nullable(). Target: z.string().trim().toLowerCase().email().max(255).optional().nullable().or(z.literal('')).transform(val => val === '' ? null : val).",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-041",
+        "T-042",
+        "T-056"
+      ],
+      "subtasks": [],
+      "tags": [
+        "cleanup",
+        "validation"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:53:00-03:00",
+        "completed": "2026-02-07T17:53:00-03:00"
+      }
+    },
+    {
+      "id": "T-010",
+      "title": "Set up Vitest + React Testing Library + MSW test infrastructure",
+      "description": "Install and configure Vitest, @testing-library/react, @testing-library/jest-dom, @testing-library/user-event, @vitejs/plugin-react, and msw as dev dependencies. Create vitest.config.ts with React plugin, path aliases (@/*), jsdom environment. Create test setup file (src/test/setup.ts) with jest-dom matchers. Create test utilities (src/test/utils.tsx) with QueryClient wrapper, renderWithProviders helper. Create MSW handlers directory (src/test/mocks/). Add test scripts to package.json: test, test:coverage, test:watch.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [
+        "T-056",
+        "T-057",
+        "T-058",
+        "T-059",
+        "T-060",
+        "T-061",
+        "T-062"
+      ],
+      "subtasks": [
+        {
+          "title": "Install dev dependencies",
+          "completed": false
+        },
+        {
+          "title": "Create vitest.config.ts",
+          "completed": false
+        },
+        {
+          "title": "Create test setup file",
+          "completed": false
+        },
+        {
+          "title": "Create test utilities with providers",
+          "completed": false
+        },
+        {
+          "title": "Create MSW handlers directory and base setup",
+          "completed": false
+        },
+        {
+          "title": "Add test scripts to package.json",
+          "completed": false
+        },
+        {
+          "title": "Verify setup with a smoke test",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "infrastructure",
+        "testing"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:44:00-03:00",
+        "completed": "2026-02-08T14:45:00-03:00"
+      }
+    },
+    {
+      "id": "T-011",
+      "title": "Install new UI dependencies",
+      "description": "Install react-day-picker, @radix-ui/react-tooltip, and @radix-ui/react-alert-dialog. Verify they are compatible with the existing React 19 and Radix UI versions in the project.",
+      "status": "completed",
+      "complexity": 1,
+      "blockedBy": [],
+      "blocks": [
+        "T-032",
+        "T-033",
+        "T-034",
+        "T-035"
+      ],
+      "subtasks": [],
+      "tags": [
+        "infrastructure",
+        "dependencies"
+      ],
+      "phase": "setup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-07T17:52:00-03:00",
+        "completed": "2026-02-07T17:52:00-03:00"
+      }
+    },
+    {
+      "id": "T-012",
+      "title": "Add rate limiting to expensive endpoints",
+      "description": "Add rate limiting to middleware.ts for expensive endpoints. Use the existing Upstash Redis rate limiter. Limits: POST /api/clientes/[id]/enrich: 10 req/min, POST /api/admin/bulk-enrich: 3 req/min, POST /api/mensajes/send: 20 req/min, POST /api/mensajes/send-bulk: 5 req/min, ALL /api/admin/*: 30 req/min. Return 429 with retry-after header and human-readable error message.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-058"
+      ],
+      "subtasks": [
+        {
+          "title": "Add rate limit configs for each endpoint group",
+          "completed": false
+        },
+        {
+          "title": "Add rate limit check logic in middleware",
+          "completed": false
+        },
+        {
+          "title": "Add retry-after header to 429 responses",
+          "completed": false
+        },
+        {
+          "title": "Test rate limiting manually",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "infrastructure",
+        "security",
+        "rate-limiting"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-013",
+      "title": "Add DB composite indexes via Prisma migration",
+      "description": "Add missing composite indexes to prisma/schema.prisma: Actividad: @@index([deletedAt, fecha]), @@index([tipo, fecha]), @@index([clienteId, tipo, fecha]). Mensaje: @@index([canal, estado, createdAt]). ClienteEnrichment: @@index([status, enrichedAt]). Run prisma migrate dev to generate and apply migration.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "infrastructure",
+        "database",
+        "performance"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:05:00-03:00"
+      }
+    },
+    {
+      "id": "T-014",
+      "title": "Wrap enrichment POST in database transaction",
+      "description": "In src/app/api/clientes/[id]/enrich/route.ts (around lines 289-300), wrap the ClienteEnrichment.create() and Cliente.update() operations in a prisma.$transaction() to ensure atomicity. If either fails, both roll back.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-021",
+        "T-058"
+      ],
+      "subtasks": [],
+      "tags": [
+        "infrastructure",
+        "data-integrity"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-015",
+      "title": "Add timeout to AI operations via Promise.race",
+      "description": "Wrap ConsensusService.enrichClient() calls in Promise.race() with a configurable timeout (ENRICHMENT_TIMEOUT_MS = 120_000). Add the constant to src/lib/constants.ts. On timeout, return a descriptive error message. Apply to both single and bulk enrichment paths.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-058"
+      ],
+      "subtasks": [],
+      "tags": [
+        "infrastructure",
+        "resilience"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:50:00-03:00",
+        "completed": "2026-02-08T14:52:00-03:00"
+      }
+    },
+    {
+      "id": "T-016",
+      "title": "Create shared SocialIcons component and update 6 files",
+      "description": "Create src/components/shared/SocialIcons.tsx with named exports for WhatsAppIcon, InstagramIcon, FacebookIcon, LinkedInIcon, TwitterIcon, and a getChannelIcon helper function. Remove duplicated SVG definitions from: src/app/clientes/[id]/page.tsx, src/components/ContactModal.tsx, src/components/BulkContactModal.tsx, src/components/ContactButtons.tsx, src/components/MensajeHistory.tsx, src/app/admin/settings/plantillas/page.tsx. Update all imports.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055",
+        "T-062"
+      ],
+      "subtasks": [
+        {
+          "title": "Create SocialIcons.tsx with all icon exports",
+          "completed": false
+        },
+        {
+          "title": "Update clientes/[id]/page.tsx",
+          "completed": false
+        },
+        {
+          "title": "Update ContactModal.tsx",
+          "completed": false
+        },
+        {
+          "title": "Update BulkContactModal.tsx",
+          "completed": false
+        },
+        {
+          "title": "Update ContactButtons.tsx",
+          "completed": false
+        },
+        {
+          "title": "Update MensajeHistory.tsx",
+          "completed": false
+        },
+        {
+          "title": "Update plantillas/page.tsx",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "refactoring",
+        "deduplication"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-017",
+      "title": "Centralize getBadgeColor to utils",
+      "description": "Extract the getBadgeColor function (and getPrioridadBadgeColor if it exists) from src/components/TablaClientes.tsx and src/components/ClienteCard.tsx into src/lib/ui-helpers.ts. Create the file with typed, documented functions. Update both component files to import from the new location.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-055",
+        "T-062"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "deduplication"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:46:00-03:00",
+        "completed": "2026-02-08T14:46:00-03:00"
+      }
+    },
+    {
+      "id": "T-018",
+      "title": "Split TablaClientes.tsx (986 lines)",
+      "description": "Split src/components/TablaClientes.tsx into focused sub-components. Suggested split: TablaClientes.tsx (main orchestrator, <300 lines), components/tabla/TableHeader.tsx (column headers, sorting), components/tabla/TableRow.tsx (row rendering), components/tabla/BulkActionsBar.tsx (bulk actions toolbar), components/tabla/TableFilters.tsx (filter integration). Complete change - update all imports across the project. No re-exports from original file.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [
+        "T-053",
+        "T-055",
+        "T-061"
+      ],
+      "subtasks": [
+        {
+          "title": "Analyze component boundaries and shared state",
+          "completed": false
+        },
+        {
+          "title": "Create TableHeader sub-component",
+          "completed": false
+        },
+        {
+          "title": "Create TableRow sub-component",
+          "completed": false
+        },
+        {
+          "title": "Create BulkActionsBar sub-component",
+          "completed": false
+        },
+        {
+          "title": "Refactor main TablaClientes to orchestrate sub-components",
+          "completed": false
+        },
+        {
+          "title": "Update all imports across the project",
+          "completed": false
+        },
+        {
+          "title": "Verify all files are under 500 lines",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:15:00-03:00",
+        "completed": "2026-02-08T04:30:00-03:00"
+      }
+    },
+    {
+      "id": "T-019",
+      "title": "Split EnrichmentModal.tsx (915 lines)",
+      "description": "Split src/components/enrichment/EnrichmentModal.tsx into focused sub-components. Suggested split: EnrichmentModal.tsx (modal shell, mode selection, <300 lines), SingleEnrichmentView.tsx (individual client enrichment flow), BulkEnrichmentView.tsx (bulk enrichment flow + results), EnrichmentProgress.tsx (progress tracking UI if not already separate). Complete change - update all imports.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [
+        "T-031",
+        "T-055",
+        "T-061"
+      ],
+      "subtasks": [
+        {
+          "title": "Analyze modal state and mode switching logic",
+          "completed": false
+        },
+        {
+          "title": "Extract SingleEnrichmentView",
+          "completed": false
+        },
+        {
+          "title": "Extract BulkEnrichmentView",
+          "completed": false
+        },
+        {
+          "title": "Refactor main modal to orchestrate views",
+          "completed": false
+        },
+        {
+          "title": "Update all imports",
+          "completed": false
+        },
+        {
+          "title": "Verify all files under 500 lines",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:20:00-03:00"
+      }
+    },
+    {
+      "id": "T-020",
+      "title": "Split bulk-enrichment-service.ts (814 lines)",
+      "description": "Split src/lib/services/bulk-enrichment-service.ts into focused modules. Suggested: bulk-enrichment-service.ts (main orchestrator, <300 lines), field-status-builder.ts (field status computation), bulk-progress-tracker.ts (progress tracking logic). Maintain the same public API.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-021",
+      "title": "Split enrich/route.ts (721 lines)",
+      "description": "Split src/app/api/clientes/[id]/enrich/route.ts into separate handler modules. Suggested: route.ts (thin router, exports GET/POST/PATCH, <100 lines), handlers/get-enrichment.ts (GET handler), handlers/create-enrichment.ts (POST handler with $transaction from T-014), handlers/review-enrichment.ts (PATCH handler for field review). Each handler file <300 lines.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-014"
+      ],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-022",
+      "title": "Split website-analysis-service.ts (652 lines)",
+      "description": "Split src/lib/services/website-analysis-service.ts into focused modules. The service already delegates to sub-services (seo, tech-stack, security-headers, etc.), so the main file should be reduced to orchestration only. Extract any inline analysis logic into the appropriate sub-service.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-023",
+      "title": "Split quota-manager.ts (588 lines)",
+      "description": "Split src/lib/quota-manager.ts into focused modules. Suggested: quota-manager.ts (main API, <300 lines), quota-checker.ts (quota verification logic), quota-history.ts (history tracking and querying).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-024",
+      "title": "Split clientes/[id]/page.tsx (568 lines)",
+      "description": "Split src/app/clientes/[id]/page.tsx into focused sub-components. Suggested: page.tsx (server component, data fetching, <200 lines), ClientHeader.tsx (name, status, priority badges), ClientContactInfo.tsx (email, phone, social links), ClientDetails.tsx (business details, notes). Keep page.tsx as the server component orchestrator.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-045",
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-025",
+      "title": "Split enrichment-post-processor.ts (528 lines)",
+      "description": "Split src/lib/services/enrichment-post-processor.ts into domain-specific processors. Suggested: enrichment-post-processor.ts (orchestrator, <200 lines), processors/social-processor.ts (social media field processing), processors/contact-processor.ts (email, phone, website processing).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-026",
+      "title": "Split EditarClienteForm.tsx (525 lines)",
+      "description": "Split src/app/clientes/[id]/editar/EditarClienteForm.tsx into focused form sections. Suggested: EditarClienteForm.tsx (form orchestrator, submit logic, <250 lines), form-sections/BasicInfoSection.tsx (name, email, phone), form-sections/BusinessSection.tsx (company, industry, revenue), form-sections/SocialSection.tsx (social media links), form-sections/NotesSection.tsx (notes, description).",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [
+        "T-042",
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-027",
+      "title": "Split QuotaDashboard.tsx (519 lines)",
+      "description": "Split src/components/admin/settings/QuotaDashboard.tsx into focused sub-components. Suggested: QuotaDashboard.tsx (layout orchestrator, <200 lines), QuotaCard.tsx (individual quota display), QuotaChart.tsx (MiniBarChart and HistoryChart), QuotaAlerts.tsx (alert list).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-028",
+      "title": "Split useEnrichment.ts (515 lines)",
+      "description": "Split src/hooks/useEnrichment.ts into focused hooks. Suggested: useEnrichment.ts (re-exports, <50 lines), useEnrichmentData.ts (queries: enrichment data, history, status), useEnrichmentActions.ts (mutations: enrich, confirm, reject fields), useEnrichmentBulk.ts (bulk enrichment operations).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055",
+        "T-059"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-029",
+      "title": "Split ai-sdk-service.ts (511 lines)",
+      "description": "Split src/lib/services/ai-sdk-service.ts into provider-specific modules. Suggested: ai-sdk-service.ts (provider selection, common interface, <200 lines), providers/openai-provider.ts (OpenAI-specific logic), providers/gemini-provider.ts (Gemini-specific logic), providers/generic-provider.ts (fallback/shared logic).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-030",
+      "title": "Split consensus-service.ts (504 lines)",
+      "description": "Split src/lib/services/consensus-service.ts into focused modules. Suggested: consensus-service.ts (orchestrator, <250 lines), consensus-calculator.ts (score computation, field merging logic), consensus-prompt-builder.ts (AI prompt construction).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [
+        "T-055"
+      ],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "file-split"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-031",
+      "title": "Add lazy loading for heavy modals",
+      "description": "Add Next.js dynamic() imports for: EmailEditor (Tiptap - heavy dependency), EnrichmentModal (after split), BulkContactModal. Use dynamic(() => import(...), { loading: () => <Spinner /> }). Update all import sites. This reduces initial bundle size.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-019"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "performance"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-032",
+      "title": "Create ConfirmationDialog component",
+      "description": "Create src/components/ui/ConfirmationDialog.tsx using @radix-ui/react-alert-dialog. Props: open, onOpenChange, title, description, confirmLabel, cancelLabel, onConfirm, variant ('danger' | 'warning' | 'info'), isLoading. Named export. JSDoc documented. Accessible with proper ARIA. Focus trap and keyboard support built into Radix. Under 150 lines.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-011"
+      ],
+      "blocks": [
+        "T-039",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component",
+        "accessibility"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-033",
+      "title": "Create Skeleton component with variants",
+      "description": "Create src/components/ui/Skeleton.tsx as a generic, reusable skeleton loader. Variants: text (single line), avatar (circle), card (rectangular), table-row (multi-column row), paragraph (multiple lines). Props: variant, width, height, lines (for paragraph), className. Uses Tailwind animate-pulse. Named export. JSDoc documented. Under 100 lines.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-011"
+      ],
+      "blocks": [
+        "T-044",
+        "T-045",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-034",
+      "title": "Create Tooltip component",
+      "description": "Create src/components/ui/Tooltip.tsx using @radix-ui/react-tooltip. Props: content (string or ReactNode), side ('top' | 'bottom' | 'left' | 'right'), delayDuration, children (trigger element). Wrap in TooltipProvider at app level (update Providers.tsx). Named export. JSDoc documented. Under 80 lines.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-011"
+      ],
+      "blocks": [
+        "T-052",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component",
+        "accessibility"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-035",
+      "title": "Create DatePicker component",
+      "description": "Create src/components/ui/DatePicker.tsx wrapping react-day-picker. Props: value (Date | undefined), onChange, placeholder, disabled, minDate, maxDate, className. Styled with Tailwind to match the app design. Uses Popover for the calendar dropdown. Named export. JSDoc documented. Under 150 lines.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-011"
+      ],
+      "blocks": [
+        "T-051",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-036",
+      "title": "Create Breadcrumbs component",
+      "description": "Create src/components/ui/Breadcrumbs.tsx. Props: items (array of { label, href? }). The last item renders as plain text (current page), others as links. Uses ChevronRight separator. Includes nav aria-label='Breadcrumb' and ol with proper list semantics. Named export. JSDoc documented. Under 60 lines.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-047",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component",
+        "navigation"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-037",
+      "title": "Create FilterBadge component",
+      "description": "Create src/components/ui/FilterBadge.tsx. Props: count (number of active filters), onClick (to toggle filter panel). Shows a small badge with the count next to the filter button/icon. Hides when count is 0. Named export. JSDoc documented. Under 40 lines.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-049",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-038",
+      "title": "Create PageJumpInput component",
+      "description": "Create src/components/ui/PageJumpInput.tsx. Props: currentPage, totalPages, onPageChange. Renders a small input field with 'Go' button. Validates input is a number within range. Hides when totalPages <= 1. Named export. JSDoc documented. Under 60 lines.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [
+        "T-050",
+        "T-060"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ui-component",
+        "pagination"
+      ],
+      "phase": "core",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-039",
+      "title": "Replace all window.confirm() with ConfirmationDialog",
+      "description": "Find all uses of window.confirm() in the codebase (TablaClientes.tsx, ClienteCard.tsx, and any others) and replace with the new ConfirmationDialog component. Each replacement needs local state management (isOpen, onConfirm handler). Ensure delete confirmations use variant='danger'.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-032"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "design-system"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-040",
+      "title": "Add mobile hamburger navigation to AuthenticatedLayout",
+      "description": "Add a hamburger menu to src/components/AuthenticatedLayout.tsx for mobile viewports (< 768px). Implementation: add a hamburger icon button visible only on mobile (md:hidden), create a MobileSidebar component that slides in from the left with all navigation links, close on link click, close on outside click, close on ESC. Use Radix Dialog or Headless UI for the slide-over. Maintain the existing desktop navigation unchanged.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Add hamburger icon button (md:hidden)",
+          "completed": false
+        },
+        {
+          "title": "Create MobileSidebar slide-over component",
+          "completed": false
+        },
+        {
+          "title": "Add navigation links matching desktop nav",
+          "completed": false
+        },
+        {
+          "title": "Handle close on link click, outside click, ESC",
+          "completed": false
+        },
+        {
+          "title": "Test on various mobile viewports",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "ux-integration",
+        "mobile",
+        "navigation"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-041",
+      "title": "Add real-time validation to create client form",
+      "description": "Update src/app/clientes/nuevo/page.tsx to use TanStack Form with the Zod cliente schema for real-time validation. Show inline error messages on blur (not on every keystroke to avoid noise). Highlight invalid fields with red border. Show success checkmark on valid fields. Disable submit until form is valid.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-009"
+      ],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Integrate TanStack Form with Zod validator",
+          "completed": true
+        },
+        {
+          "title": "Add onBlur validation to all fields",
+          "completed": true
+        },
+        {
+          "title": "Add inline error message display",
+          "completed": true
+        },
+        {
+          "title": "Add visual field state indicators",
+          "completed": true
+        },
+        {
+          "title": "Disable submit on invalid form",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "ux-integration",
+        "forms",
+        "validation"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T23:00:00-03:00",
+        "completed": "2026-02-08T23:05:00-03:00"
+      }
+    },
+    {
+      "id": "T-042",
+      "title": "Add real-time validation to edit client form",
+      "description": "Update EditarClienteForm.tsx (after split in T-026) to use TanStack Form with Zod cliente schema for real-time validation. Same UX as T-041: onBlur validation, inline errors, field state indicators, disabled submit when invalid.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-009",
+        "T-026"
+      ],
+      "blocks": [
+        "T-043"
+      ],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "forms",
+        "validation"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T23:05:00-03:00",
+        "completed": "2026-02-08T23:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-043",
+      "title": "Add unsaved changes warning to edit form",
+      "description": "Add unsaved changes detection to EditarClienteForm. Track form dirty state via TanStack Form's isDirty. Add window.addEventListener('beforeunload') to warn on browser navigation. Add Next.js router interception for in-app navigation using router.events or a custom hook. Show ConfirmationDialog when navigating away with unsaved changes.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-042"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "forms"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": true,
+        "typecheck": true,
+        "tests": true
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T09:40:00-03:00",
+        "completed": "2026-02-08T09:52:00-03:00"
+      }
+    },
+    {
+      "id": "T-044",
+      "title": "Add skeleton loaders to client list page",
+      "description": "Add Skeleton component usage to src/app/clientes/page.tsx. Show skeleton table rows (or skeleton cards in card view) while data loads. Match the layout of actual content (columns, spacing). Use the Skeleton component's table-row variant. Show 5-10 skeleton rows.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-033"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "loading-states"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T18:10:00-03:00",
+        "completed": "2026-02-08T18:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-045",
+      "title": "Add skeleton loaders to client detail page",
+      "description": "Add Skeleton component usage to the client detail page (after split in T-024). Show skeleton blocks matching the header, contact info, and details layout while server component loads data.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-033",
+        "T-024"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "loading-states"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T18:10:00-03:00",
+        "completed": "2026-02-08T18:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-046",
+      "title": "Improve empty states with descriptive messages and CTAs",
+      "description": "Update empty state displays across the app: client list (no clients yet -> 'Create your first client' CTA), activities list (no activities -> 'Log your first activity' CTA), messages (no messages -> guidance text), filtered results (no matches -> suggest clearing filters). Add an icon (from Lucide) and descriptive text to each empty state.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [
+        {
+          "title": "Improve clientes list empty state",
+          "completed": false
+        },
+        {
+          "title": "Improve actividades empty state",
+          "completed": false
+        },
+        {
+          "title": "Improve messages empty state",
+          "completed": false
+        },
+        {
+          "title": "Add 'no filter results' empty state",
+          "completed": false
+        }
+      ],
+      "tags": [
+        "ux-integration",
+        "empty-states"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T04:00:00-03:00",
+        "completed": "2026-02-08T04:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-047",
+      "title": "Add breadcrumbs to all deep pages",
+      "description": "Add the Breadcrumbs component to: clientes/[id]/page.tsx (Clientes > Client Name), clientes/[id]/editar/page.tsx (Clientes > Client Name > Editar), clientes/[id]/actividades/page.tsx (Clientes > Client Name > Actividades), clientes/nuevo/page.tsx (Clientes > Nuevo), admin settings pages (Admin > Settings > [Section]). Remove existing 'Volver' buttons where breadcrumbs provide the same functionality.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-036"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "navigation"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-048",
+      "title": "Add autofocus to primary inputs in modals and forms",
+      "description": "Add autoFocus to the primary input in: FiltrosAvanzados search input, ContactModal template select, NuevaActividadModal first field, create client form first field (nombre), EnrichmentModal first interaction point. Use autoFocus prop on the first interactive element users should type in.",
+      "status": "completed",
+      "complexity": 1,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "forms"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T14:53:00-03:00",
+        "completed": "2026-02-08T14:55:00-03:00"
+      }
+    },
+    {
+      "id": "T-049",
+      "title": "Integrate FilterBadge into FiltrosAvanzados",
+      "description": "Add the FilterBadge component to src/components/FiltrosAvanzados.tsx. Compute active filter count from the current filter state (count non-default/non-empty filter values). Display the badge next to the filter toggle button so users can see at a glance how many filters are active.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-037"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "filters"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-050",
+      "title": "Integrate PageJumpInput into Pagination",
+      "description": "Add the PageJumpInput component to src/components/Pagination.tsx. Show it alongside the existing prev/next buttons. Only show when totalPages > 5 (to avoid clutter on small datasets). Wire up onPageChange to the existing pagination handler.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-038"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "pagination"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-051",
+      "title": "Replace native date inputs with DatePicker",
+      "description": "Replace all <input type='date'> elements with the new DatePicker component. Locations: FiltrosAvanzados.tsx (date range filters), EditarClienteForm.tsx (any date fields), NuevaActividadModal.tsx (activity date). Maintain the same value/onChange interface.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-035"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "forms"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T18:15:00-03:00",
+        "completed": "2026-02-08T18:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-052",
+      "title": "Add tooltips to complex settings",
+      "description": "Add Tooltip component to complex settings pages: API key management (explain where to get keys, what each provider does), enrichment settings (explain confidence threshold, cooldown period, enabled providers), quota settings (explain what quotas mean). Use Tooltip with informative content wrapping a HelpCircle icon next to each setting label.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-034"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "help"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-053",
+      "title": "Improve table accessibility with ARIA roles and labels",
+      "description": "Update TablaClientes (after split in T-018) with proper accessibility: add role='table' to table element, add aria-label to the table, add aria-label to each checkbox ('Select client [name]'), add aria-sort to sortable column headers, add aria-selected to selected rows, add role='rowgroup' to thead/tbody. Follow WAI-ARIA table pattern.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-018"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "accessibility"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T18:15:00-03:00",
+        "completed": "2026-02-08T18:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-054",
+      "title": "Add loading states (spinner buttons) to async form submissions",
+      "description": "Add loading/disabled state to submit buttons across the app during async operations. Use the existing Button component's loading prop (or add one if missing). Apply to: create client form, edit client form, contact modal send, nueva actividad modal, enrichment form, admin settings forms. The button should show a spinner icon and be disabled while the mutation is pending.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "ux-integration",
+        "loading-states"
+      ],
+      "phase": "integration",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": null,
+        "completed": null
+      },
+      "started": "2026-02-08T16:55:00-03:00",
+      "completed": "2026-02-08T16:55:00-03:00"
+    },
+    {
+      "id": "T-055",
+      "title": "Add barrel exports to all directories",
+      "description": "Create index.ts files with named re-exports in: src/components/ui/, src/components/enrichment/, src/components/enrichment/shared/, src/components/admin/settings/, src/components/shared/, src/hooks/, src/lib/validations/, src/lib/services/, src/lib/services/external-apis/, src/types/. Each index.ts should export * from each module in the directory. Verify no circular imports are introduced (check with tsc).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-016",
+        "T-017",
+        "T-018",
+        "T-019",
+        "T-020",
+        "T-021",
+        "T-022",
+        "T-023",
+        "T-024",
+        "T-025",
+        "T-026",
+        "T-027",
+        "T-028",
+        "T-029",
+        "T-030"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "refactoring",
+        "dx"
+      ],
+      "phase": "cleanup",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T18:20:00-03:00",
+        "completed": "2026-02-08T18:20:00-03:00"
+      }
+    },
+    {
+      "id": "T-056",
+      "title": "Write tests for Zod validation schemas",
+      "description": "Write comprehensive tests for all 7 Zod validation schemas in src/lib/validations/: cliente.ts, actividad.ts, enrichment.ts, enrichment-settings.ts, api-key.ts, mensaje.ts, plantilla.ts. Each schema test file should cover: valid input acceptance, required field validation, type coercion, optional/nullable fields, custom refinements, transform functions (especially the fixed email validation from T-009), edge cases (empty strings, max lengths, special characters). Target: 100% coverage of validation schemas.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-010",
+        "T-009"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [
+        {
+          "title": "Test cliente.ts schema",
+          "completed": true
+        },
+        {
+          "title": "Test actividad.ts schema",
+          "completed": true
+        },
+        {
+          "title": "Test enrichment.ts schema",
+          "completed": false
+        },
+        {
+          "title": "Test enrichment-settings.ts schema",
+          "completed": false
+        },
+        {
+          "title": "Test api-key.ts schema",
+          "completed": false
+        },
+        {
+          "title": "Test mensaje.ts schema",
+          "completed": true
+        },
+        {
+          "title": "Test plantilla.ts schema",
+          "completed": true
+        }
+      ],
+      "tags": [
+        "testing",
+        "validation"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T19:10:00-03:00",
+        "completed": "2026-02-08T19:20:00-03:00"
+      }
+    },
+    {
+      "id": "T-057",
+      "title": "Write tests for service layer",
+      "description": "Write unit tests for key services: consensus-service (after split), bulk-enrichment-service (after split), email-service, template-render-service, contact-service, url-verification-service, quota-manager (after split). Mock Prisma client, OpenAI SDK, and external API calls. Test success paths, error handling, edge cases, and timeout behavior.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-010"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "services"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T19:10:00-03:00",
+        "completed": "2026-02-08T19:20:00-03:00"
+      }
+    },
+    {
+      "id": "T-058",
+      "title": "Write tests for API routes",
+      "description": "Write integration tests for API routes using MSW for request mocking. Test: clientes CRUD (GET list, GET single, POST create, PUT update, DELETE), clientes/[id]/enrich (POST, GET, PATCH), admin/bulk-enrich (POST), mensajes/send (POST), actividades (GET, POST). Each test should cover: success response, validation error (400), auth error (401), not found (404), rate limiting (429 from T-012). Verify response shapes match expected types.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-010",
+        "T-012",
+        "T-014",
+        "T-015"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "api"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": true,
+        "typecheck": true,
+        "tests": true
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T09:55:00-03:00",
+        "completed": "2026-02-08T15:38:00-03:00"
+      }
+    },
+    {
+      "id": "T-059",
+      "title": "Write tests for custom hooks",
+      "description": "Write tests for all 5 hooks in src/hooks/ using @testing-library/react renderHook with a QueryClient wrapper. Hooks: useEnrichment (after split in T-028), useApiKeys, useEnrichmentSettings, useQuotas, useNotifications. Test: initial loading state, successful data fetch, error state, mutation triggers, cache invalidation.",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-010",
+        "T-028"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "hooks"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T21:00:00-03:00",
+        "completed": "2026-02-08T21:05:00-03:00"
+      }
+    },
+    {
+      "id": "T-060",
+      "title": "Write tests for new UI components",
+      "description": "Write component tests for all new UI components created in Phase 4: ConfirmationDialog (render, open/close, confirm/cancel callbacks, variant styling, loading state), Skeleton (all variants render correctly, custom dimensions), Tooltip (shows on hover, hides on leave, content rendering), DatePicker (calendar opens, date selection, min/max constraints), Breadcrumbs (renders links, current page as text, separator), FilterBadge (shows count, hides at 0), PageJumpInput (validates input, submits on enter/click).",
+      "status": "completed",
+      "complexity": 3,
+      "blockedBy": [
+        "T-010",
+        "T-032",
+        "T-033",
+        "T-034",
+        "T-035",
+        "T-036",
+        "T-037",
+        "T-038"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "components"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T20:30:00-03:00",
+        "completed": "2026-02-08T20:45:00-03:00"
+      }
+    },
+    {
+      "id": "T-061",
+      "title": "Write tests for refactored components",
+      "description": "Write component tests for key refactored components: TablaClientes (after split in T-018) - rendering, row selection, bulk actions, sorting, pagination. EnrichmentModal (after split in T-019) - mode switching, form submission, progress display. Test interaction flows using @testing-library/user-event.",
+      "status": "completed",
+      "complexity": 4,
+      "blockedBy": [
+        "T-010",
+        "T-018",
+        "T-019"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "components"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T21:05:00-03:00",
+        "completed": "2026-02-08T21:10:00-03:00"
+      }
+    },
+    {
+      "id": "T-062",
+      "title": "Write tests for utilities",
+      "description": "Write unit tests for shared utilities: getBadgeColor (after centralization in T-017), SocialIcons (after creation in T-016), logger/error-reporting (after improvement in T-003), ui-helpers, and any other utility functions in src/lib/utils.ts. Pure function tests with clear input/output assertions.",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-010",
+        "T-016",
+        "T-017"
+      ],
+      "blocks": [
+        "T-063"
+      ],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "utilities"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T19:10:00-03:00",
+        "completed": "2026-02-08T19:15:00-03:00"
+      }
+    },
+    {
+      "id": "T-063",
+      "title": "Verify 75% coverage target",
+      "description": "Run pnpm test:coverage and verify total coverage meets the 75% target. If below target, identify uncovered areas and add targeted tests. Generate coverage report and document final coverage percentage. Address any coverage gaps in critical paths (auth, enrichment, data mutations).",
+      "status": "completed",
+      "complexity": 2,
+      "blockedBy": [
+        "T-056",
+        "T-057",
+        "T-058",
+        "T-059",
+        "T-060",
+        "T-061",
+        "T-062"
+      ],
+      "blocks": [],
+      "subtasks": [],
+      "tags": [
+        "testing",
+        "quality-gate"
+      ],
+      "phase": "testing",
+      "qualityGate": {
+        "lint": null,
+        "typecheck": null,
+        "tests": null
+      },
+      "timestamps": {
+        "created": "2026-02-07T17:45:00-03:00",
+        "started": "2026-02-08T21:30:00-03:00",
+        "completed": "2026-02-08T21:35:00-03:00"
+      }
+    }
+  ],
+  "summary": {
+    "total": 63,
+    "completed": 59,
+    "in_progress": 0,
+    "pending": 4,
+    "percentage": 93.7
+  }
+}

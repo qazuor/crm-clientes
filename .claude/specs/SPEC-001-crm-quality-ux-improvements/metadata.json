@@ -1,0 +1,23 @@
+{
+  "specId": "SPEC-001",
+  "title": "CRM Quality & UX Improvements",
+  "type": "improvement",
+  "complexity": "high",
+  "status": "approved",
+  "created": "2026-02-07T17:30:00-03:00",
+  "approved": "2026-02-07T17:45:00-03:00",
+  "completed": null,
+  "planFileRef": null,
+  "tags": [
+    "quality",
+    "ux",
+    "testing",
+    "refactoring",
+    "accessibility",
+    "mobile",
+    "rate-limiting",
+    "validation",
+    "code-standards",
+    "performance"
+  ]
+}

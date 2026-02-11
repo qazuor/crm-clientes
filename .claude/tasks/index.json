@@ -1,0 +1,17 @@
+{
+  "version": "1.0",
+  "epics": [
+    {
+      "specId": "SPEC-001",
+      "title": "CRM Quality & UX Improvements",
+      "status": "pending",
+      "progress": "0/63",
+      "path": "SPEC-001-crm-quality-ux-improvements"
+    }
+  ],
+  "standalone": {
+    "path": "standalone",
+    "total": 0,
+    "completed": 0
+  }
+}
