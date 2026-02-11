@@ -23,7 +23,9 @@ export const FuenteClienteSchema = z.enum([
 // Create Cliente DTO Schema
 export const CreateClienteDTOSchema = z.object({
   nombre: z.string().min(1, 'El nombre es requerido').max(255, 'El nombre es muy largo'),
-  email: z.string().email('Email inválido').max(255).optional().nullable(),
+  email: z.string().trim().toLowerCase().email('Email inválido').max(255).optional().nullable()
+    .or(z.literal(''))
+    .transform((val) => (val === '' ? null : val)),
   telefono: z.string().max(50).optional().nullable(),
   whatsapp: z.string().max(50).optional().nullable(),
   instagram: z.string().max(100).optional().nullable(),
